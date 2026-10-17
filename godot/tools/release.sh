@@ -41,6 +41,6 @@ echo "== web -> GitHub Pages"
 TMP="$(mktemp -d)"
 cp -r godot/build/web/. "$TMP/"
 touch "$TMP/.nojekyll"
-( cd "$TMP" && git init -q -b gh-pages && git add -A && git commit -qm "Web build v$VER" && git push -qf "https://github.com/$REPO.git" gh-pages )
+( cd "$TMP" && git init -q -b gh-pages && git add -A && git -c user.name="$(git -C "$ROOT" config user.name)" -c user.email="$(git -C "$ROOT" config user.email)" commit -qm "Web build v$VER" && git push -qf "https://github.com/$REPO.git" gh-pages )
 rm -rf "$TMP"
 echo "Done: https://github.com/$REPO/releases/latest  ·  https://${REPO%%/*}.github.io/${REPO#*/}/"

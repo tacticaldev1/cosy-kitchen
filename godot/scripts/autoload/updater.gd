@@ -66,6 +66,9 @@ func _on_checked(result: int, code: int, _headers: PackedStringArray, body: Pack
 			download_url = str(a.get("browser_download_url", ""))
 	state = "available" if newer(latest, current) else "uptodate"
 	status_changed.emit()
+	# `-- --update-now` installs straight away (used to test the updater end to end)
+	if state == "available" and OS.get_cmdline_user_args().has("--update-now"):
+		update_now()
 
 static func newer(a: String, b: String) -> bool:
 	var pa := a.split(".")
