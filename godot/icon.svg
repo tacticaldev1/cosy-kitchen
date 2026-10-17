@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE3EC"/><stop offset="1" stop-color="#FFB9CF"/></linearGradient>
+    <linearGradient id="pan" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE9A8"/><stop offset="1" stop-color="#EBB25A"/></linearGradient>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="30" fill="url(#bg)" stroke="#3B2340" stroke-width="6"/>
+  <ellipse cx="64" cy="98" rx="44" ry="12" fill="#F7F8FF" stroke="#3B2340" stroke-width="4"/>
+  <rect x="26" y="70" width="76" height="20" rx="10" fill="url(#pan)" stroke="#3B2340" stroke-width="4"/>
+  <rect x="30" y="52" width="68" height="20" rx="10" fill="url(#pan)" stroke="#3B2340" stroke-width="4"/>
+  <rect x="34" y="34" width="60" height="20" rx="10" fill="url(#pan)" stroke="#3B2340" stroke-width="4"/>
+  <rect x="54" y="24" width="20" height="14" rx="4" fill="#FFF3B0" stroke="#3B2340" stroke-width="4"/>
+  <path d="M38 40 q8 10 4 22 q-2 6 -6 0" fill="#C8742E" stroke="#3B2340" stroke-width="3"/>
+  <circle cx="52" cy="62" r="3.5" fill="#3B2340"/><circle cx="76" cy="62" r="3.5" fill="#3B2340"/>
+  <path d="M58 68 q6 6 12 0" fill="none" stroke="#3B2340" stroke-width="3" stroke-linecap="round"/>
+  <ellipse cx="44" cy="68" rx="5" ry="3" fill="#FF7EA6" opacity=".7"/><ellipse cx="84" cy="68" rx="5" ry="3" fill="#FF7EA6" opacity=".7"/>
+</svg>

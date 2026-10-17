@@ -1,0 +1,17 @@
+{
+  "name": "cosy-kitchen",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A cosy anime-style ASMR cooking and café game in a single HTML file.",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/build.mjs && npx --yes serve dist -l 5173",
+    "test": "node scripts/build.mjs && node tests/smoke.mjs",
+    "sheets": "node scripts/build.mjs && node tests/sheets.mjs",
+    "godot:audio": "node godot/tools/audio/render_audio.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.0"
+  }
+}

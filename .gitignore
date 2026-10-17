@@ -1,0 +1,5 @@
+node_modules/
+tests/*.png
+godot/.godot/
+godot/build/
+*.tmp.*
