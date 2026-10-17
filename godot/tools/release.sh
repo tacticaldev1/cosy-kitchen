@@ -14,7 +14,7 @@ DIR="$(cd "$(dirname "$0")/.." && pwd)"
 ROOT="$(cd "$DIR/.." && pwd)"
 GODOT="${GODOT:-/c/Users/maste/Downloads/Godot_v4.6.2-stable_win64.exe/Godot_v4.6.2-stable_win64_console.exe}"
 GH="${GH:-$(command -v gh || echo "$LOCALAPPDATA/CosyKitchenTools/gh/bin/gh.exe")}"
-REPO="$(grep -oP 'config/github_repo="\K[^"]+' "$DIR/project.godot")"
+REPO="$(grep '^config/github_repo=' "$DIR/project.godot" | cut -d'"' -f2)"
 
 cd "$DIR"
 sed -i "s/^config\/version=\".*\"/config\/version=\"$VER\"/" project.godot
