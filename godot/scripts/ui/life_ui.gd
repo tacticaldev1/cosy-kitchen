@@ -380,9 +380,10 @@ func open_shop(id: String) -> void:
 		"homestore": _shop_home()
 		"boutique": open_boutique(false)
 		"florist", "bookshop", "jeweler": _shop_gifts(id)
+		"clinic": _shop_clinic()
 
 func _shop_header(id: String, greet: String, v: VBoxContainer) -> void:
-	var keeper: String = {"market": "kai", "florist": "hana", "bookshop": "ren", "homestore": "homestore", "boutique": "boutique", "jeweler": "jeweler"}.get(id, "")
+	var keeper: String = {"market": "kai", "florist": "hana", "bookshop": "ren", "homestore": "homestore", "boutique": "boutique", "jeweler": "jeweler", "clinic": "doctor"}.get(id, "")
 	if keeper == "": return
 	var h := UI.hbox(14)
 	h.add_child(UI.tex(portrait(keeper), Vector2(84, 84)))
@@ -390,10 +391,11 @@ func _shop_header(id: String, greet: String, v: VBoxContainer) -> void:
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	l.custom_minimum_size.x = 600
 	h.add_child(l)
-	var job: String = {"market": "delivery", "florist": "bouquets", "bookshop": "books"}.get(id, "")
+	var job: String = {"market": "delivery", "florist": "bouquets", "bookshop": "books", "boutique": "tailoring", "jeweler": "gems", "homestore": "assembly", "clinic": "nursery"}.get(id, "")
 	if job != "":
 		var jb := UI.button("Work a shift", "Mint", func(): game.life.start_job(job), 18)
-		jb.tooltip_text = {"delivery": "Deliver crates around town against the clock", "bouquets": "Arrange bouquets for customers", "books": "Shelve books in order"}[job]
+		jb.tooltip_text = {"delivery": "Deliver crates around town against the clock", "bouquets": "Arrange bouquets for customers", "books": "Shelve books in order",
+			"tailoring": "Sew outfits to order", "gems": "Polish the gems as they sparkle", "assembly": "Repeat the assembly steps", "nursery": "Soothe crying babies"}[job]
 		jb.disabled = game.life.job_done_today(job) or not game.life.job_open()
 		if jb.disabled: jb.text = "Shift done today" if game.life.job_done_today(job) else "Shifts 9am–6pm"
 		jb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -549,6 +551,29 @@ func _shop_gifts(id: String) -> void:
 		else:
 			v.add_child(UI.label("You've read every plating cookbook. Ren is impressed.", 19, UI.MUTED, UI.font_xbold))
 	v.add_child(UI.label("Your gifts: " + (", ".join(Save.gifts.keys().map(func(k): return "%s ×%d" % [People.gift_name(k), Save.gifts[k]])) if Save.gifts.size() else "none yet"), 18, UI.MUTED, UI.font_xbold, true))
+	mh.w = hud._modal(pr[0])
+	(pr[2] as Button).pressed.connect(func(): hud.close_modal(mh.w))
+
+func _shop_clinic() -> void:
+	var pr := hud._panel("Hoshizora Clinic", "Check-ups, adoption and family planning", 860)
+	var v: VBoxContainer = pr[1]
+	_shop_header("clinic", "Welcome! Every family starts somewhere. How can I help?", v)
+	var mh := {}
+	var rows := [
+		["Health check-up · ¥500 (+30 energy)", "Mint", func(): game.life.checkup()],
+		["Adopt a baby · ¥5,000", "", func(): game.life.adopt("baby")],
+		["Adopt a toddler · ¥5,000", "", func(): game.life.adopt("toddler")],
+		["Adopt a child · ¥5,000", "", func(): game.life.adopt("child")],
+	]
+	if Save.partner != "": rows.append(["Fertility visit with %s · ¥8,000 (a baby is very likely for a week)" % People.npc_name(Save.partner), "Gold", func(): game.life.fertility_visit()])
+	for r in rows:
+		var cb: Callable = r[2]
+		var b := UI.button(r[0], r[1], func():
+			hud.close_modal(mh.w)
+			cb.call(), 21)
+		b.custom_minimum_size = Vector2(0, 60)
+		v.add_child(b)
+	v.add_child(UI.label("Kids at home: %d of %d" % [Save.family.kids.size(), Life.MAX_KIDS], 18, UI.MUTED, UI.font_xbold))
 	mh.w = hud._modal(pr[0])
 	(pr[2] as Button).pressed.connect(func(): hud.close_modal(mh.w))
 

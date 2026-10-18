@@ -31,6 +31,12 @@ const CATALOG := {
 	"fireplace": ["Fireplace", 7400, "both", 1.4, 0.5, "Living", "Crackling and warm."],
 	"toy_box": ["Toy box", 1400, "home", 0.8, 0.5, "Living", "For the little ones."],
 	"goldfish": ["Goldfish bowl", 900, "both", 0.5, 0.5, "Decor", "A goldfish won at the festival, swimming happy circles."],
+	# shop fittings (not sold, used to dress the shop interiors)
+	"crate_fruit": ["Produce crates", 0, "shop", 1.1, 0.6, "Shop", ""],
+	"flower_bucket": ["Flower buckets", 0, "shop", 1.1, 0.5, "Shop", ""],
+	"clothes_rack": ["Clothes rack", 0, "shop", 1.2, 0.5, "Shop", ""],
+	"gem_case": ["Display case", 0, "shop", 1.2, 0.6, "Shop", ""],
+	"waiting_bench": ["Waiting bench", 0, "shop", 1.4, 0.5, "Shop", ""],
 }
 
 const WALLS := {"Peach": "FCE9DE", "Sakura": "FFE0EA", "Mint": "DFF5EC", "Sky": "E2EEFF", "Lemon": "FFF6D2", "Lilac": "EDE3FF", "Cocoa": "E8D2C2", "Night": "B8B0D8"}
@@ -55,6 +61,7 @@ static func seats(id: String) -> Array:
 		"table4": return [[Vector3(-0.58, 0, 0), PI * 0.5, 0.3], [Vector3(0.58, 0, 0), -PI * 0.5, 0.3], [Vector3(0, 0, -0.58), 0.0, 0.3], [Vector3(0, 0, 0.58), PI, 0.3]]
 		"booth": return [[Vector3(-0.55, 0, -0.05), PI * 0.5, 0.28], [Vector3(0.55, 0, -0.05), -PI * 0.5, 0.28]]
 		"chair": return [[Vector3(0, 0, 0), 0.0, 0.3]]
+		"waiting_bench": return [[Vector3(-0.35, 0, 0.02), 0.0, 0.33], [Vector3(0.35, 0, 0.02), 0.0, 0.33]]
 		"sofa": return [[Vector3(-0.35, 0, 0.05), 0.0, 0.28], [Vector3(0.35, 0, 0.05), 0.0, 0.28]]
 		"armchair": return [[Vector3(0, 0, 0.05), 0.0, 0.28]]
 	return []
@@ -182,6 +189,53 @@ static func _build(mb: MB, id: String) -> void:
 			for s in [-1.0, 1.0]:
 				mb.at(Vector3(s * 0.26, 0.95, 0.28)); mb.rbox(Vector3(0.48, 1.55, 0.02), 0.02, 1); mb.pop()
 				mb.col(Color("FFD24A"), 0.6); mb.at(Vector3(s * 0.05, 0.95, 0.3)); mb.sphere(0.025, 8, 6); mb.pop(); mb.col(Color("FFD6C2"), 0.6)
+		"crate_fruit":
+			for k in 2:
+				var x := -0.27 + k * 0.54
+				mb.col(Color("C8864E"), 1.0, 0.2); mb.at(Vector3(x, 0.32, 0)); mb.rbox(Vector3(0.5, 0.36, 0.55), 0.02, 2); mb.pop()
+				mb.col(Color("A8703E"), 0.0); mb.at(Vector3(x, 0.4, 0.278)); mb.rbox(Vector3(0.46, 0.04, 0.01), 0.004, 1); mb.pop()
+				var cols: Array = [[Color("F2545B"), Color("E8404A")], [Color("FFB84A"), Color("FF9F2E")], [Color("8ED16B"), Color("6BBF59")], [Color("FFE24A"), Color("F2CF3A")]][(k * 2 + int(absf(x) * 3.0)) % 4]
+				for i in 9:
+					mb.col(cols[i % 2], 1.0, 0.5); mb.at(Vector3(x - 0.15 + (i % 3) * 0.15, 0.55 + (i / 3) * 0.03, -0.15 + (i / 3) * 0.15)); mb.sphere(0.075, 10, 8); mb.pop()
+			mb.col(Color("C8864E"), 1.0, 0.2)
+			for s in [-1.0, 1.0]:
+				mb.at(Vector3(s * 0.5, 0.07, 0)); mb.rbox(Vector3(0.06, 0.14, 0.5), 0.01, 1); mb.pop()
+		"flower_bucket":
+			var fc := [Color("FF7EA6"), Color("FFD24A"), Color("E8404A"), Color("C3A6FF"), Color("FFFFFF")]
+			for k in 3:
+				var x := -0.36 + k * 0.36
+				mb.col(Color("A9C8FF"), 1.0, 0.6); mb.at(Vector3(x, 0.2, 0)); mb.cylinder(0.14, 0.4, 16, 0.16); mb.pop()
+				for i in 7:
+					var a := i * 0.9
+					var top := Vector3(x + cos(a) * 0.07, 0.62 + (i % 3) * 0.04, sin(a) * 0.07)
+					mb.col(Color("6BBF59"), 0.0); mb.tube(PackedVector3Array([Vector3(x, 0.38, 0), top]), 0.008, 4)
+					mb.col(fc[(k * 2 + i) % fc.size()], 1.0, 0.3); mb.at(top); mb.sphere(0.045, 8, 6); mb.pop()
+		"clothes_rack":
+			mb.col(Color("C8C8D8"), 1.0, 0.8)
+			for s in [-1.0, 1.0]:
+				mb.tube(PackedVector3Array([Vector3(s * 0.55, 0.0, 0), Vector3(s * 0.55, 1.35, 0)]), 0.02, 8)
+				mb.tube(PackedVector3Array([Vector3(s * 0.55, 0.01, -0.2), Vector3(s * 0.55, 0.01, 0.2)]), 0.018, 6)
+			mb.tube(PackedVector3Array([Vector3(-0.56, 1.33, 0), Vector3(0.56, 1.33, 0)]), 0.018, 8)
+			var cc := [Color("FF9EBB"), Color("A9C8FF"), Color("FFD24A"), Color("B7E3A0"), Color("C3A6FF"), Color("FFFFFF")]
+			for i in 6:
+				var x := -0.42 + i * 0.17
+				mb.col(Color("8A8A98"), 0.0); mb.tube(PackedVector3Array([Vector3(x, 1.33, 0), Vector3(x, 1.24, 0)]), 0.006, 4)
+				mb.col(cc[i], 1.0, 0.2); mb.at(Vector3(x, 1.0, 0)); mb.rbox(Vector3(0.05, 0.46, 0.3), 0.02, 2); mb.pop()
+		"gem_case":
+			mb.col(Color("8A5A3A"), 1.0, 0.3); mb.at(Vector3(0, 0.42, 0)); mb.rbox(Vector3(1.2, 0.84, 0.6), 0.03, 2); mb.pop()
+			mb.col(Color("FFF4E2"), 1.0, 0.2); mb.at(Vector3(0, 0.86, 0)); mb.rbox(Vector3(1.14, 0.04, 0.54), 0.01, 1); mb.pop()
+			var gc := [Color("E8404A"), Color("6A8AD8"), Color("8ED16B"), Color("FFD24A"), Color("C3A6FF")]
+			for i in 5:
+				mb.col(gc[i], 1.0, 1.0); mb.at(Vector3(-0.4 + i * 0.2, 0.92, 0.0), Vector3(0, i * 0.5, 0)); mb.ellipsoid(0.045, 0.035, 0.045, 6, 4); mb.pop()
+			mb.layer(1)
+			mb.col(Color("D8ECFF"), 0.0, 1.0); mb.at(Vector3(0, 1.02, 0)); mb.rbox(Vector3(1.16, 0.28, 0.56), 0.01, 1); mb.pop()
+			mb.layer(0)
+		"waiting_bench":
+			mb.col(Color("BDEBDD"), 1.0, 0.2); mb.at(Vector3(0, 0.45, 0)); mb.rbox(Vector3(1.4, 0.1, 0.45), 0.04, 2); mb.pop()
+			mb.at(Vector3(0, 0.75, -0.2)); mb.rbox(Vector3(1.4, 0.45, 0.07), 0.03, 2); mb.pop()
+			mb.col(Color("C8C8D8"), 1.0, 0.8)
+			for s in [-1.0, 1.0]:
+				mb.at(Vector3(s * 0.62, 0.2, 0)); mb.rbox(Vector3(0.05, 0.4, 0.4), 0.01, 1); mb.pop()
 		"goldfish":
 			mb.col(Color("C8864E"), 1.0, 0.2); mb.at(Vector3(0, 0.3, 0)); mb.cylinder(0.14, 0.6, 16); mb.pop()
 			mb.col(Color("CDEBFA"), 1.0, 0.9); mb.at(Vector3(0, 0.74, 0)); mb.sphere(0.17, 20, 14); mb.pop()

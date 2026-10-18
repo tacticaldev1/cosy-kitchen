@@ -149,6 +149,9 @@ func seats() -> Array:
 	out.append_array(furni.seats())
 	return out
 
+func extra_bodies() -> Array:
+	return game.shop.customers
+
 func set_hour(h: float) -> void:
 	var night := clampf((h - 17.0) / 4.0, 0.0, 1.0)
 	if window_mat:

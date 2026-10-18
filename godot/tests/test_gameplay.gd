@@ -259,7 +259,7 @@ func run(t) -> void:
 		game.life.new_day()
 		game.life.morning()
 		game.sim(1.2)
-	t.check(Save.family.kids.size() == dr_kids0 + 1 and Save.family.kids.back().get("parent", "") == "kai", "days later Kai arrives with your baby")
+	t.check(Save.family.kids.size() >= dr_kids0 + 1 and Save.family.kids.back().get("parent", "") == "kai", "days later Kai arrives with your baby")
 	game.life.cheat("fertile")
 	# town drama: townsfolk pair up and have babies; your partner strays
 	game.life.cheat("matchmaker")
@@ -386,6 +386,55 @@ func run(t) -> void:
 	t.check(Save.home_kind == "house" and game.home.kind == "house" and Save.wallet == 30000, "buy the house on the corner for ¥120,000")
 	t.check(Save.layouts.home.size() + Save.furni_inv.size() >= n_items and NavReport.check(game.home, game.home.entry_point("door"), NavReport.points_for(game.home)).is_empty(), "your furniture moves with you and the house is walkable %s" % str(NavReport.check(game.home, game.home.entry_point("door"), NavReport.points_for(game.home))))
 	game.hud.close_all()
+	# ---- shop interiors, the clinic, and four more jobs
+	Save.minute = 23 * 60.0
+	game.travel_now("city", "market")
+	game.enter_shop("market")
+	t.check(game.loc == game.city, "shops are closed late at night")
+	game.hud.close_all()
+	Save.minute = 11 * 60.0
+	Save.energy = 100.0
+	game.enter_shop("florist")
+	t.check(game.loc == game.shop_loc and game.shop_loc.shop == "florist" and game.shop_loc.keeper_node != null and String(game.shop_loc.keeper_node.get_meta("npc")) == "hana", "walk into Hana's Flowers: Hana is behind the counter at 11am")
+	t.check(not game.city.people.hana.visible or game.loc != game.city, "…and not out on the street at the same time")
+	game.leave_shop()
+	game.enter_shop("clinic")
+	t.check(game.loc == game.shop_loc and game.shop_loc.keeper_node != null, "the clinic, with Dr. Mori")
+	Save.wallet = 50000
+	var kc: int = Save.family.kids.size()
+	game.life.adopt("toddler")
+	t.check(Save.family.kids.size() == kc + 1 and Life.kid_stage(Save.family.kids.back()) == "toddler" and Save.family.kids.back().get("adopted", false), "adopt a toddler")
+	Save.partner = "yuki"
+	game.life.fertility_visit()
+	t.check(Life.fertile() and Save.wallet == 37000, "a fertility visit (a baby is very likely for a week)")
+	Save.partner = ""
+	game.life.checkup()
+	var mg2: Minigames = game.hud.minigames
+	var w35 := Save.wallet
+	game.life.start_job("tailoring")
+	mg2._state.pick = mg2._state.want.duplicate()
+	mg2._tl_submit()
+	t.check(int(mg2._state.made) == 1, "sew an outfit exactly to order")
+	mg2._finish()
+	game.life.start_job("gems")
+	var cell: Dictionary = mg2._state.cells[0]
+	cell.t = 1.0
+	mg2._gem_click(cell)
+	t.check(int(mg2._state.polished) == 1, "polish a sparkling gem")
+	mg2._finish()
+	game.life.start_job("assembly")
+	mg2._state.show = -1
+	for step_i in mg2._state.seq.duplicate(): mg2._asm_press(step_i)
+	t.check(int(mg2._state.built) == 1, "repeat the assembly steps")
+	mg2._finish()
+	game.life.start_job("nursery")
+	mg2._state.babies[0].cry = 1.0
+	mg2._soothe(mg2._state.babies[0])
+	t.check(int(mg2._state.soothed) == 1, "rock a crying baby back to sleep")
+	mg2._finish()
+	t.check(Save.wallet > w35 + 600, "four more jobs pay (%s)" % G.yen(Save.wallet - w35))
+	game.leave_shop()
+	game.hud.close_all()
 	# ---- sleep & time
 	game.hud.close_all()
 	Save.minute = 600.0
@@ -406,6 +455,6 @@ func run(t) -> void:
 	var snap := Save.wallet
 	Save.wallet = 1
 	Save.load_game()
-	t.check(Save.wallet == snap and Save.r("hana").ex and Save.family.kids.size() == 2, "the save file round-trips the new life")
+	t.check(Save.wallet == snap and Save.r("hana").ex and Save.family.kids.size() >= 2, "the save file round-trips the new life")
 	Save.reset()
 	game.queue_free()

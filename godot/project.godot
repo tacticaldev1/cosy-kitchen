@@ -12,7 +12,7 @@ config_version=5
 
 config/name="Cosy Kitchen"
 config/description="A cosy anime-style café life sim. Cook 100 recipes, serve customers, impress critics, decorate, explore Hoshizora Town, fall in love and raise a family."
-config/version="3.4.0"
+config/version="3.5.0"
 config/github_repo="tacticaldev1/cosy-kitchen"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")

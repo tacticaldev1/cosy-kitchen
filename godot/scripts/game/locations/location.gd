@@ -120,6 +120,34 @@ func make_person(id: String, look: Dictionary, label: String, kind := "adult") -
 func tick(dt: float) -> void:
 	for n in npcs:
 		if is_instance_valid(n): n.tick(dt, game.clock)
+	separate_people()
+
+## Other characters that can bump into each other here (walkers in town, customers in the café).
+func extra_bodies() -> Array:
+	return []
+
+## People don't walk through each other: anyone standing closer than a body's width gets
+## nudged apart (never into walls or furniture).
+func separate_people() -> void:
+	if nav == null: return
+	var bodies: Array = []
+	for n in npcs:
+		if is_instance_valid(n) and n.visible and not n.sitting: bodies.append(n)
+	for n in extra_bodies():
+		if is_instance_valid(n) and n.visible and not n.sitting: bodies.append(n)
+	if game.loc == self and game.player.visible and not game.player.sitting: bodies.append(game.player)
+	for i in bodies.size():
+		var a: Chibi = bodies[i]
+		for j in range(i + 1, bodies.size()):
+			var b: Chibi = bodies[j]
+			var d := Vector2(b.global_position.x - a.global_position.x, b.global_position.z - a.global_position.z)
+			var min_d := 0.3 * (a.scale.x + b.scale.x) * 0.5 + 0.04
+			var l := d.length()
+			if l >= min_d: continue
+			var dir := d / l if l > 0.001 else Vector2(1, 0)
+			var push := Vector3(dir.x, 0, dir.y) * (min_d - l) * 0.5
+			if nav.is_free(a.global_position - push): a.global_position -= push
+			if nav.is_free(b.global_position + push): b.global_position += push
 
 ## hour: 6.0 .. 26.0
 func set_hour(_h: float) -> void:

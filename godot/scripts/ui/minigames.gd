@@ -41,6 +41,9 @@ func _process(dt: float) -> void:
 	match active:
 		"takoyaki": _tako_tick(dt)
 		"goldfish": _fish_tick(dt)
+		"gems": _gems_tick(dt)
+		"assembly": _asm_tick(dt)
+		"nursery": _nursery_tick(dt)
 	if t_left <= 0.0: _finish()
 
 ## Ends the game, pays out and passes time.
@@ -342,3 +345,230 @@ func _fish_ui() -> void:
 		_state.result = "You caught %d goldfish! One comes home with you in a little bowl (it's in your storage)." % _state.caught
 	else:
 		_state.result = "Not a single fish… the stall keeper gives you a sympathy candy."
+
+# ================================================================ tailoring at Mimi's
+const CLOTH := [["Pink", "FF9EBB"], ["Sky", "A9C8FF"], ["Lemon", "FFD24A"], ["Mint", "B7E3A0"], ["Lilac", "C3A6FF"]]
+const TRIMS := ["Bow", "Flower", "Beret", "Glasses"]
+
+func tailoring(done := Callable()) -> void:
+	_on_done = done
+	active = "tailoring"
+	var v := _open("Sewing at Mimi's Boutique", "Pick the top, the bottoms and the accessory each customer asks for, then sew it!", 60.0, 900.0)
+	_state = {"pay": 0, "minutes": 90.0, "energy": 6.0, "made": 0, "pick": {}}
+	var req := UI.label("", 24, UI.PLUM, UI.font_display, true)
+	v.add_child(req)
+	_state.req_lbl = req
+	for part in ["Top", "Bottoms"]:
+		var row := UI.hbox(8)
+		row.add_child(UI.label(part, 20, UI.PLUM, UI.font_xbold))
+		for c in CLOTH:
+			var cn: String = c[0]
+			var pp: String = part
+			var b := UI.button(cn, "", func():
+				_state.pick[pp] = cn
+				Sfx.play("pop", 0.5, 1.2)
+				_tl_ui(), 18)
+			_btn_style(b, Color(c[1]), 16)
+			b.custom_minimum_size = Vector2(120, 56)
+			row.add_child(b)
+		v.add_child(row)
+	var arow := UI.hbox(8)
+	arow.add_child(UI.label("Accessory", 20, UI.PLUM, UI.font_xbold))
+	for a in TRIMS:
+		var an: String = a
+		arow.add_child(UI.button(a, "Ghost", func():
+			_state.pick["Accessory"] = an
+			Sfx.play("pop", 0.5, 1.2)
+			_tl_ui(), 18))
+	v.add_child(arow)
+	var cur := UI.label("", 19, UI.MUTED, UI.font_xbold)
+	v.add_child(cur)
+	_state.cur_lbl = cur
+	v.add_child(UI.button("Sew it! ✂", "", func(): _tl_submit(), 24))
+	_tl_new()
+
+func _tl_new() -> void:
+	_state.want = {"Top": CLOTH[randi() % CLOTH.size()][0], "Bottoms": CLOTH[randi() % CLOTH.size()][0], "Accessory": TRIMS[randi() % TRIMS.size()]}
+	_state.pick = {}
+	_tl_ui()
+
+func _tl_ui() -> void:
+	var w: Dictionary = _state.want
+	_state.req_lbl.text = "Customer wants: a %s top, %s bottoms and a %s" % [w.Top.to_lower(), w.Bottoms.to_lower(), w.Accessory.to_lower()]
+	_state.cur_lbl.text = "On your table: " + (", ".join(_state.pick.keys().map(func(k): return "%s: %s" % [k, _state.pick[k]])) if _state.pick.size() else "nothing yet")
+	_score_lbl.text = "Outfits: %d   ·   Earned: %s" % [_state.made, G.yen(_state.pay)]
+
+func _tl_submit() -> void:
+	if _same(_state.pick, _state.want):
+		_state.made += 1
+		_state.pay += 340
+		Sfx.play("chime")
+		_tl_new()
+	else:
+		t_left -= 4.0
+		hud.toast("Not quite what they asked for!")
+		Sfx.play("tick")
+
+# ================================================================ polishing gems at Kobayashi's
+func gems(done := Callable()) -> void:
+	_on_done = done
+	active = "gems"
+	var v := _open("Polishing at Kobayashi Jewels", "Click each gem while it sparkles to polish it. Don't touch the dull ones!", 40.0, 760.0)
+	_state = {"pay": 0, "minutes": 75.0, "energy": 6.0, "polished": 0, "cells": [], "next": 0.6}
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 12)
+	var cc := CenterContainer.new()
+	cc.add_child(grid)
+	v.add_child(cc)
+	var gcols := ["E8404A", "6A8AD8", "8ED16B", "FFD24A", "C3A6FF", "7FD3F8"]
+	for i in 12:
+		var b := Button.new()
+		b.focus_mode = Control.FOCUS_NONE
+		b.custom_minimum_size = Vector2(100, 90)
+		b.add_theme_font_size_override("font_size", 18)
+		var cell := {"b": b, "t": 0.0, "col": Color(gcols[i % gcols.size()])}
+		b.pressed.connect(func(): _gem_click(cell))
+		grid.add_child(b)
+		_state.cells.append(cell)
+	_gems_tick(0.0)
+
+func _gem_click(cell: Dictionary) -> void:
+	if float(cell.t) > 0.0:
+		cell.t = 0.0
+		_state.polished += 1
+		_state.pay += 95
+		Sfx.play("sparkle", 0.6)
+	else:
+		t_left -= 1.5
+		Sfx.play("tick", 0.5)
+	_gems_tick(0.0)
+
+func _gems_tick(dt: float) -> void:
+	_state.next -= dt
+	if _state.next <= 0.0:
+		_state.next = randf_range(0.45, 0.9)
+		var c: Dictionary = _state.cells[randi() % _state.cells.size()]
+		c.t = 1.15
+	for c in _state.cells:
+		if float(c.t) > 0.0: c.t = maxf(0.0, float(c.t) - dt)
+		var on: bool = float(c.t) > 0.0
+		_btn_style(c.b, (c.col as Color).lightened(0.25) if on else (c.col as Color).darkened(0.45).lerp(Color("8A8A98"), 0.5), 30)
+		c.b.text = "✦ ✦" if on else ""
+	if _score_lbl: _score_lbl.text = "Polished: %d   ·   Earned: %s" % [_state.polished, G.yen(_state.pay)]
+
+# ================================================================ furniture assembly at the Home Store
+const TOOLS := [["Hammer", "E8A04A"], ["Screwdriver", "6A8AD8"], ["Wrench", "8ED16B"], ["Glue", "FF9EBB"], ["Saw", "C3A6FF"]]
+
+func assembly(done := Callable()) -> void:
+	_on_done = done
+	active = "assembly"
+	var v := _open("Assembling at the Home Store", "Watch Mr. Tanaka's steps, then repeat them in the same order!", 70.0, 860.0)
+	_state = {"pay": 0, "minutes": 90.0, "energy": 7.0, "built": 0, "seq": [], "input": [], "show": -1, "show_t": 0.0, "btns": [], "len": 3}
+	var info := UI.label("", 22, UI.SAKURA_D, UI.font_xbold)
+	v.add_child(info)
+	_state.info = info
+	var row := UI.hbox(10)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	for i in TOOLS.size():
+		var b := UI.button(TOOLS[i][0], "", Callable(), 20)
+		b.custom_minimum_size = Vector2(150, 110)
+		_btn_style(b, Color(TOOLS[i][1]), 18)
+		var ii: int = i
+		b.pressed.connect(func(): _asm_press(ii))
+		row.add_child(b)
+		_state.btns.append(b)
+	v.add_child(row)
+	_asm_round()
+
+func _asm_round() -> void:
+	_state.seq = []
+	for k in int(_state.len): _state.seq.append(randi() % TOOLS.size())
+	_state.input = []
+	_state.show = 0
+	_state.show_t = 0.7
+	_state.info.text = "Watch… (%d steps)" % int(_state.len)
+
+func _asm_press(i: int) -> void:
+	if int(_state.show) >= 0: return
+	_state.input.append(i)
+	Sfx.play("pop", 0.6, 0.8 + i * 0.1)
+	var k: int = _state.input.size() - 1
+	if _state.seq[k] != i:
+		t_left -= 3.0
+		hud.toast("Oops! That wobbles. Watch again.")
+		_asm_round()
+		return
+	if _state.input.size() == _state.seq.size():
+		_state.built += 1
+		_state.pay += 280 + 60 * int(_state.len)
+		_state.len = mini(int(_state.len) + 1, 8)
+		Sfx.play("chime")
+		_asm_round()
+	_score_lbl.text = "Built: %d   ·   Earned: %s" % [_state.built, G.yen(_state.pay)]
+
+func _asm_tick(dt: float) -> void:
+	var idx := int(_state.show)
+	for i in _state.btns.size():
+		(_state.btns[i] as Button).modulate = Color(1, 1, 1, 1.0 if idx < 0 or (idx < _state.seq.size() and _state.seq[idx] == i and float(_state.show_t) > 0.25) else 0.45)
+	if idx < 0: return
+	_state.show_t -= dt
+	if _state.show_t <= 0.0:
+		_state.show += 1
+		_state.show_t = 0.7
+		if int(_state.show) >= _state.seq.size():
+			_state.show = -1
+			_state.info.text = "Your turn! Repeat the %d steps." % _state.seq.size()
+		else:
+			Sfx.play("tick", 0.6, 0.8 + _state.seq[int(_state.show)] * 0.1)
+
+# ================================================================ the nursery at the clinic
+func nursery(done := Callable()) -> void:
+	_on_done = done
+	active = "nursery"
+	var v := _open("Helping in the clinic nursery", "Babies start crying: click them to rock them back to sleep before their cry meter fills!", 45.0, 820.0)
+	_state = {"pay": 0, "minutes": 90.0, "energy": 7.0, "soothed": 0, "missed": 0, "babies": [], "next": 1.0, "npc": ""}
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 14)
+	grid.add_theme_constant_override("v_separation", 14)
+	var cc := CenterContainer.new()
+	cc.add_child(grid)
+	v.add_child(cc)
+	for i in 6:
+		var b := Button.new()
+		b.focus_mode = Control.FOCUS_NONE
+		b.custom_minimum_size = Vector2(170, 110)
+		b.add_theme_font_size_override("font_size", 22)
+		var baby := {"b": b, "cry": -1.0}
+		b.pressed.connect(func(): _soothe(baby))
+		grid.add_child(b)
+		_state.babies.append(baby)
+	_nursery_tick(0.0)
+
+func _soothe(baby: Dictionary) -> void:
+	if float(baby.cry) >= 0.0:
+		baby.cry = -1.0
+		_state.soothed += 1
+		_state.pay += 110
+		Sfx.play("note", 0.5, 1.3)
+	_nursery_tick(0.0)
+
+func _nursery_tick(dt: float) -> void:
+	_state.next -= dt
+	if _state.next <= 0.0:
+		_state.next = randf_range(0.7, 1.6)
+		var quiet: Array = _state.babies.filter(func(b): return float(b.cry) < 0.0)
+		if quiet.size(): quiet[randi() % quiet.size()].cry = 0.0
+	for b in _state.babies:
+		if float(b.cry) >= 0.0:
+			b.cry += dt
+			if float(b.cry) > 4.0:
+				b.cry = -1.0
+				_state.missed += 1
+				Sfx.play("tick", 0.4)
+		var c: float = b.cry
+		_btn_style(b.b, Color("FFE2D2") if c < 0.0 else Color("FFE2D2").lerp(Color("FF8A8A"), c / 4.0), 40)
+		b.b.text = "z z z" if c < 0.0 else "WAAH! " + "▮".repeat(int(c) + 1)
+	if _score_lbl: _score_lbl.text = "Soothed: %d   ·   Woke the ward: %d   ·   Earned: %s" % [_state.soothed, _state.missed, G.yen(_state.pay)]

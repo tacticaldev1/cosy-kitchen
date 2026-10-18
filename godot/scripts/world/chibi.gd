@@ -31,6 +31,7 @@ var path: PackedVector3Array = PackedVector3Array()
 var speed := 1.25
 var bob := 0.0
 var sitting := false
+var floor_y := 0.0        # standing height (a shopkeeper's step behind the counter)
 var sit_height := 0.0
 var walking := false
 var _walk_t := 0.0
@@ -415,9 +416,16 @@ func _build_cat() -> void:
 	hold.position = Vector3(0, 0.25, 0.16)
 
 # ---------------------------------------------------------------- outfit toggles
+const HAT_FIT := {"afro": [0.075, 1.3], "topknot": [0.06, 1.05], "manbun": [0.03, 1.08], "mohawk": [0.05, 1.05], "buns": [0.02, 1.15], "curly": [0.04, 1.12],
+	"quiff": [0.05, 1.1], "dreads": [0.02, 1.08], "messy": [0.03, 1.08], "spiky": [0.03, 1.08], "short": [0.02, 1.04], "undercut": [0.04, 1.05], "drills": [0.0, 1.06]}
+
 func set_work_clothes(on: bool) -> void:
 	if _apron: _apron.visible = on
-	if _hat: _hat.visible = on
+	if _hat:
+		_hat.visible = on
+		var fit: Array = HAT_FIT.get(String(look.get("style", "")), [0.0, 1.0])
+		_hat.position = Vector3(0, float(fit[0]), 0)
+		_hat.scale = Vector3.ONE * float(fit[1])
 
 func feel(m: String, hold_t := 2.5) -> void:
 	if face: face.set_mood(m, hold_t)
@@ -466,7 +474,7 @@ func sit_at(pos: Vector3, yaw: float, height: float) -> void:
 
 func stand_up() -> void:
 	sitting = false
-	position.y = 0.0
+	position.y = floor_y
 
 func tick(dt: float, clock: float) -> void:
 	if walking and path.size():
@@ -483,7 +491,7 @@ func tick(dt: float, clock: float) -> void:
 			global_position += d.normalized() * minf(d.length(), speed * dt)
 			rotation.y = lerp_angle(rotation.y, atan2(d.x, d.z), minf(1.0, dt * 12.0))
 	if not sitting:
-		global_position.y = lerpf(global_position.y, 0.0, minf(1.0, dt * 12.0))
+		global_position.y = lerpf(global_position.y, floor_y, minf(1.0, dt * 12.0))
 	_animate(dt, clock)
 
 func _animate(dt: float, clock: float) -> void:

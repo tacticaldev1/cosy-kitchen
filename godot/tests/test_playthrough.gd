@@ -146,6 +146,33 @@ func talk_to(n: Node3D) -> bool:
 	step(0.1)
 	return true
 
+## Walk into a shop and up to its counter (opens the shop window).
+func browse(id: String) -> bool:
+	if game.loc != game.city: travel("door", "city")
+	use("door_" + id)
+	step(0.2)
+	if game.loc != game.shop_loc:
+		t.check(false, "walk into the %s" % id)
+		return false
+	use("counter")
+	return true
+
+func leave_shop() -> void:
+	game.hud.close_all()
+	if game.loc == game.shop_loc: travel("door", "city")
+
+## Find someone: in their shop during working hours, otherwise out in town.
+func find_npc(id: String) -> Chibi:
+	if Life.npc_at_work(id):
+		var sid: String = {"kai": "market", "hana": "florist", "ren": "bookshop"}[id]
+		if game.loc != game.shop_loc or game.shop_loc.shop != sid:
+			if game.loc != game.city: travel("door", "city")
+			use("door_" + sid)
+			step(0.2)
+		return game.shop_loc.keeper_node
+	if game.loc != game.city: travel("door", "city")
+	return game.city.people[id]
+
 func travel(id: String, to: String) -> bool:
 	use(id)
 	step(0.2)
@@ -296,14 +323,15 @@ func day_one() -> void:
 	t.check(not game.shop.open, "flip the sign to close")
 	t.check(travel("door", "city"), "out into town again")
 	# shopping: the market and the home store
-	use("door_market")
-	t.check(press("+5"), "buy five of something at the market")
-	game.hud.close_all()
+	browse("market")
+	t.check(game.loc == game.shop_loc and game.shop_loc.shop == "market", "walk inside Kai's market")
+	t.check(press("+5"), "buy five of something at the market counter")
+	leave_shop()
 	t.check(Save.pantry.size() > 0 and Story.done("market") or Save.chapter > 1, "the pantry fills up")
-	use("door_homestore")
+	browse("homestore")
 	var w0 := Save.wallet
 	t.check(press("¥"), "buy a piece of furniture at the Home Store")
-	game.hud.close_all()
+	leave_shop()
 	t.check(Save.wallet < w0 and Save.furni_inv.size() > 0, "it goes into storage")
 	t.check(travel("door_home", "home"), "walk home")
 	use("bed")
@@ -342,23 +370,29 @@ func chapter_two_and_three() -> void:
 	t.check(game.loc.nav.is_free(game.player.global_position), "you're never left standing inside furniture")
 	t.check(travel("door", "city"), "back out to town")
 	# meet everyone
+	Save.minute = maxf(Save.minute, 9.5 * 60.0)
+	game.city.set_hour(Save.hour())
 	for nid in ["kai", "hana", "ren", "yuki"]:
-		var n: Chibi = game.city.people[nid]
-		if not n.visible: Save.minute = maxf(Save.minute, 9 * 60.0)
-		game.city.set_hour(Save.hour())
-		t.check(talk_to(n), "walk up to %s and press E" % People.npc_name(nid))
+		var n: Chibi = find_npc(nid)
+		t.check(n != null and talk_to(n), "find %s (%s) and press E" % [People.npc_name(nid), "at work in the shop" if Life.npc_at_work(nid) else "in town"])
 		t.check(choose("Chat"), "%s: Chat" % People.npc_name(nid))
 		read_all()
+	leave_shop()
 	t.check(Story.done("talk_all"), "talked to all four townsfolk")
 	# a gift from the florist
-	use("door_florist")
+	browse("florist")
 	t.check(press("Red roses"), "buy red roses at the florist")
 	game.hud.close_all()
-	talk_to(game.city.people.hana)
+	talk_to(find_npc("hana"))
 	t.check(choose("Give a gift"), "Hana: Give a gift")
 	t.check(choose("Red roses"), "pick the roses")
 	read_all()
 	t.check(Save.hearts("hana") >= 2.5, "Hana loves roses (%.1f hearts)" % Save.hearts("hana"))
+	# it's getting late: the cheat menu winds the clock back to morning
+	game.hud.open_console()
+	press("Morning")
+	game.hud.close_all()
+	if game.loc != game.city: travel("door", "city")
 	# Grandpa Jiro at the bus stop
 	t.check(talk_to(game.city.people.jiro), "find Grandpa Jiro at the bus stop")
 	read_all()
@@ -389,14 +423,14 @@ func love_and_family() -> void:
 	t.check(choose("Ask to be your partner"), "ask Yuki to be your partner")
 	read_all()
 	t.check(Save.partner == "yuki", "Yuki is your partner")
-	use("door_jeweler")
+	browse("jeweler")
 	t.check(press("Engagement ring"), "buy the engagement ring")
-	game.hud.close_all()
+	leave_shop()
 	talk_to(game.city.people.yuki)
 	t.check(choose("Propose"), "propose to Yuki")
 	read_all()
 	# buy a double bed and a crib, then go home
-	use("door_homestore")
+	browse("homestore")
 	for tab in ["Bedroom"]: press(tab)
 	step(0.1)
 	var bought := 0
@@ -405,6 +439,7 @@ func love_and_family() -> void:
 		if card: card.pressed.emit(); bought += 1
 	game.hud.close_all()
 	t.check(Save.furni_inv.get("bed", 0) >= 1 and Save.furni_inv.get("crib", 0) >= 1, "buy a double bed and a crib (%d)" % bought)
+	leave_shop()
 	t.check(travel("door_home", "home"), "walk home")
 	t.check(game.edit.start(), "edit mode at home")
 	var single := game.home.furni.first("single_bed")
@@ -506,7 +541,7 @@ func jobs_and_festival() -> void:
 	press("Full energy")
 	game.hud.close_all()
 	# a delivery shift for Kai, on foot
-	use("door_market")
+	browse("market")
 	t.check(press("Work a shift"), "Kai's market: Work a shift")
 	t.check(game.life.delivery.size() > 0, "a crate in your arms")
 	var w0 := Save.wallet

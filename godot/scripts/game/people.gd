@@ -28,6 +28,7 @@ const KEEPERS := {
 	"homestore": {"name": "Mr. Tanaka", "look": {"body": "m", "skin": "F2CDB0", "hair": "C8C8D8", "shirt": "E8A04A", "pants": "3B4A7A", "style": "short", "acc": "glasses"}},
 	"boutique": {"name": "Mimi", "look": {"body": "f", "bottom": "skirt", "skin": "FFEADF", "hair": "F2B8C8", "shirt": "8B7BC9", "pants": "2E2A3A", "style": "twin", "acc": "bow"}},
 	"jeweler": {"name": "Mrs. Kobayashi", "look": {"body": "f", "bottom": "dress", "skin": "FFE2D2", "hair": "6A4AC8", "shirt": "6A8AD8", "pants": "2E2A3A", "style": "bob", "acc": "glasses"}},
+	"doctor": {"name": "Dr. Mori", "look": {"body": "f", "bottom": "pants", "skin": "F2CDB0", "hair": "3A2A2A", "shirt": "F2F2F8", "pants": "7FD3B8", "style": "pony", "acc": "glasses"}},
 	"jiro": {"name": "Grandpa Jiro", "look": {"body": "m", "skin": "E8B896", "hair": "F2F2F8", "shirt": "8A6A4A", "pants": "5A4A70", "style": "short", "acc": "beret"}},
 }
 

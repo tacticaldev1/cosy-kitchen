@@ -5,9 +5,9 @@ extends Location
 
 const SHOPS := {
 	"home": "Sakura Apartments", "market": "Kai's Market", "homestore": "Home Store", "cafe": "Cosy Kitchen",
-	"boutique": "Mimi's Boutique", "florist": "Hana's Flowers", "jeweler": "Kobayashi Jewels", "bookshop": "Ren's Books",
+	"boutique": "Mimi's Boutique", "florist": "Hana's Flowers", "jeweler": "Kobayashi Jewels", "bookshop": "Ren's Books", "clinic": "Hoshizora Clinic",
 }
-const SIGN_COL := {"home": "8B7BC9", "market": "2E8A68", "homestore": "C87A20", "cafe": "D9527E", "boutique": "6A4AC8", "florist": "4E9A3E", "jeweler": "3A5AB8", "bookshop": "8A4A2A"}
+const SIGN_COL := {"clinic": "2E8A78", "home": "8B7BC9", "market": "2E8A68", "homestore": "C87A20", "cafe": "D9527E", "boutique": "6A4AC8", "florist": "4E9A3E", "jeweler": "3A5AB8", "bookshop": "8A4A2A"}
 
 var sun: DirectionalLight3D
 var lamps: Array = []
@@ -223,8 +223,8 @@ func _build_interacts() -> void:
 				label = "Enter the café"
 				act = func(): game.travel("cafe", "door")
 			_:
-				label = "Shop at " + SHOPS[s]
-				act = func(): game.open_shop_ui(sid)
+				label = "Enter " + SHOPS[s]
+				act = func(): game.enter_shop(sid)
 		add_interact("door_" + s, room.mark("door_" + s), 0.95, label, act)
 		interacts.back().h = 2.2
 
@@ -263,7 +263,7 @@ func set_hour(h: float) -> void:
 	for id in People.NPCS:
 		var c: Chibi = people[id]
 		var at_home_with_you: bool = Save.married and Save.partner == id
-		c.visible = (out and not at_home_with_you) or _couple == id or _wedding
+		c.visible = (out and not at_home_with_you and not Life.npc_at_work(id)) or _couple == id or _wedding
 	for w in walkers: w.visible = h >= 7.0 and h < 21.5
 	refresh_npc_kids()
 	for k in npc_kid_nodes: k.visible = h >= 8.0 and h < 19.0
@@ -513,6 +513,9 @@ func affair_scene(on: bool) -> void:
 		for id in People.NPCS:
 			people[id].set_meta("pause", 0.0)
 		set_hour(Save.hour())
+
+func extra_bodies() -> Array:
+	return walkers + npc_kid_nodes
 
 ## Townsfolk's own children play near their parents' spots.
 func refresh_npc_kids() -> void:

@@ -22,6 +22,7 @@ var cafe: CafeLocation
 var city: CityLocation
 var home: HomeLocation
 var npc_house: NpcHomeLocation
+var shop_loc: ShopLocation
 var sneaking := false
 var stations := {}
 var counter: Array = []
@@ -69,7 +70,8 @@ func _ready() -> void:
 	city = CityLocation.new()
 	home = HomeLocation.new()
 	npc_house = NpcHomeLocation.new()
-	for l in [cafe, city, home, npc_house]:
+	shop_loc = ShopLocation.new()
+	for l in [cafe, city, home, npc_house, shop_loc]:
 		add_child(l)
 		l.setup(self)
 		locs[l.key] = l
@@ -909,6 +911,18 @@ func leave_house() -> void:
 	sneaking = false
 	travel("city", "house_" + id)
 
+## Walk into one of the shops on Main Street.
+func enter_shop(id: String) -> void:
+	if not ShopLocation.is_open(id):
+		var s: Dictionary = ShopLocation.SHOPS[id]
+		hud.say([["", "%s is closed. Open %d:00 till %d:00." % [s.title, int(s.get("open", ShopLocation.OPEN)), int(s.get("close", ShopLocation.CLOSE))]]])
+		return
+	shop_loc.set_shop(id)
+	travel("shop", "door")
+
+func leave_shop() -> void:
+	travel("city", shop_loc.shop)
+
 func open_shop_ui(id: String) -> void:
 	hud.open_shop(id)
 
@@ -1033,6 +1047,9 @@ func _dev_setup(what: String) -> void:
 				player.global_position = Vector3(float(parts[1]), 0, -2.6)
 			Save.minute = float(Shot.arg("minute", "600"))
 			city.set_hour(Save.hour())
+			if Shot.arg("high") != "":
+				city.cam_offset = Vector3(0, 16.0, 9.0)
+				city.cam_look = Vector3(0, 2.0, -3.0)
 			sim(0.5)
 		"park":
 			travel_now("city", "park")
@@ -1130,6 +1147,12 @@ func _dev_setup(what: String) -> void:
 			Save.minute = 600.0
 			travel_now("city", parts[1])
 			life.start_job({"bookshop": "books", "florist": "bouquets"}[parts[1]])
+		"shopin":
+			Save.minute = 11 * 60.0
+			travel_now("city", parts[1])
+			shop_loc.set_shop(parts[1])
+			travel_now("shop", "door")
+			player.global_position = Vector3(1.6, 0, 0.6)
 		"myhouse":
 			Save.wallet = 200000
 			life.buy_house()
@@ -1163,6 +1186,7 @@ func _dev_setup(what: String) -> void:
 					c.global_position = Vector3(-1.6 + (i % 9) * 0.4, 0, 0.1 + (i / 9) * 0.6)
 					c.rotation.y = 0.35
 					c.feel("happy", 99.0)
+					if Shot.arg("hat") != "": c.set_work_clothes(true)
 					var l := Label3D.new()
 					l.text = looks[i].style
 					l.font_size = 40
@@ -1188,6 +1212,10 @@ func _dev_setup(what: String) -> void:
 				all.append_array(NavReport.check(l, l.entry_point("door" if l != city else "home"), NavReport.points_for(l), Shot.arg("map") != ""))
 			home.move_to("house")
 			all.append_array(NavReport.check(home, home.entry_point("door"), NavReport.points_for(home), Shot.arg("map") != "").map(func(p): return "house: " + p))
+			Save.minute = 12 * 60.0
+			for sid in ShopLocation.SHOPS:
+				shop_loc.set_shop(sid)
+				all.append_array(NavReport.check(shop_loc, shop_loc.entry_point("door"), NavReport.points_for(shop_loc), Shot.arg("map") != "").map(func(p): return sid + ": " + p))
 			for id in People.NPCS:
 				npc_house.set_host(id)
 				all.append_array(NavReport.check(npc_house, npc_house.entry_point("door"), NavReport.points_for(npc_house), Shot.arg("map") != "").map(func(p): return id + "'s " + p))

@@ -6,7 +6,7 @@ extends Node
 const MIN_PER_SEC := 1.0          # one real second is one game minute
 const DAY_START := 420.0          # 7:00
 const PASS_OUT := 1560.0          # 2:00 the next morning
-const MAX_KIDS := 4
+const MAX_KIDS := 12
 
 var game: Game
 var rng := RandomNumberGenerator.new()
@@ -534,7 +534,7 @@ func wedding() -> void:
 ## At bedtime with your spouse. Tasteful: the lights go down and the screen fades to black.
 func start_family() -> void:
 	if Save.family.kids.size() >= MAX_KIDS:
-		game.hud.say([[Save.partner, "Four little ones is plenty of love for one apartment, don't you think?"]])
+		game.hud.say([[Save.partner, "Twelve little ones… I think our hearts are full, love."]])
 		return
 	game.hud.say([["", "You curl up with %s and talk about the future: little shoes by the door, tiny hands helping in the kitchen…" % partner_name()],
 		[Save.partner, "I'd love to start a family with you."]], func():
@@ -556,12 +556,64 @@ func birth() -> void:
 		game.hud.ask_text("What will you name your baby %s?" % ("girl" if girl else "boy"), names[rng.randi() % names.size()], func(nm: String):
 			Save.family.kids.append({"name": nm, "born": Save.day, "look": look, "parent": parent})
 			Save.family.expecting = -1
+			_maybe_twin(parent, nm)
 			flag("baby")
 			Save.save()
 			Sfx.play("yay")
 			game.home.refresh_family()
 			var crib := Story._home_has("crib")
 			game.hud.say([[parent if parent != "" else "", "Welcome to the world, little %s." % nm], ["", "You're a parent now!" + ("" if crib else " Don't forget to put a crib in the apartment.")]])))
+
+## Sometimes it's twins (much more likely after a fertility visit).
+func _maybe_twin(parent: String, first: String) -> void:
+	if Save.family.kids.size() >= MAX_KIDS or rng.randf() >= (0.3 if fertile() else 0.1): return
+	var lk := _kid_look(parent)
+	var pool: Array = (["Hina", "Mio", "Sakura", "Yui", "Aoi", "Momo"] if lk.body == "f" else ["Sora", "Haru", "Riku", "Ren", "Taichi", "Kota"]).filter(func(n): return n != first)
+	var nm: String = pool[rng.randi() % pool.size()]
+	Save.family.kids.append({"name": nm, "born": Save.day, "look": lk, "parent": parent, "twin": first})
+	game.home.refresh_family()
+	game.after(0.5, func(): game.hud.say([["", "Wait… there's another one! TWINS! Say hello to little %s too. ♥" % nm]]))
+
+## Adopting through the clinic: a baby, a toddler or a school-age child joins the family.
+func adopt(stage: String) -> void:
+	if Save.family.kids.size() >= MAX_KIDS:
+		game.hud.say([["doctor", "Your family is already so big! Twelve children is our limit for one home."]])
+		return
+	if Save.wallet < 5000:
+		game.hud.say([["doctor", "The adoption fee is ¥5,000. Come back when you're ready."]])
+		return
+	Save.wallet -= 5000
+	var lk := Chibi.random_look(rng)
+	var girl: bool = lk.body == "f"
+	var age := {"baby": 0, "toddler": 5, "child": 11}.get(stage, 0) as int
+	var names: Array = ["Hina", "Mio", "Sakura", "Yui", "Aoi", "Momo", "Nana", "Rin"] if girl else ["Sora", "Haru", "Riku", "Ren", "Taichi", "Kota", "Yuto", "Kenta"]
+	game.hud.say([["doctor", "Here's the little one who's been waiting for a family like yours: a %s %s." % [stage, "girl" if girl else "boy"]]], func():
+		game.hud.ask_text("What will you call them?", names[rng.randi() % names.size()], func(nm: String):
+			Save.family.kids.append({"name": nm, "born": Save.day - age, "look": lk, "parent": Save.partner, "adopted": true})
+			flag("baby")
+			game.home.refresh_family()
+			Sfx.play("yay")
+			Save.save()
+			game.hud.say([["", "%s is coming home with you. Welcome to the family! ♥" % nm]])))
+
+func fertility_visit() -> void:
+	if Save.wallet < 8000:
+		game.hud.say([["doctor", "The consultation is ¥8,000."]])
+		return
+	Save.wallet -= 8000
+	Save.flags["fertile_until"] = Save.day + 7
+	Save.save()
+	game.hud.say([["doctor", "All done! For the next week a baby is very likely when you try, and twins are more likely too. Good luck!"]])
+
+func checkup() -> void:
+	if int(Save.flags.get("checkup", -1)) == Save.day:
+		game.hud.say([["doctor", "You had a check-up today already. You're doing fine!"]])
+		return
+	if Save.wallet < 500: return
+	Save.wallet -= 500
+	Save.flags["checkup"] = Save.day
+	eat(30.0)
+	game.hud.say([["doctor", "Healthy as a radish! Drink water and sleep well. (+30 energy)"]])
 
 func _kid_look(parent := "") -> Dictionary:
 	var a: Dictionary = Save.player_look
@@ -607,6 +659,7 @@ func talk_family(id: String) -> void:
 
 func _talk_keeper(id: String) -> void:
 	match id:
+		"doctor": game.open_shop_ui("clinic")
 		"jiro":
 			var tips := ["Harder dishes earn bigger tips, and critics love ambition.", "Customers wait longer if you have a record player. Lo-fi calms the soul.",
 				"The market sells ingredients cheaper than the fridge's delivery service.", "Kuroda the critic reads the newspaper reviews too, you know. Don't get cocky!",
@@ -626,6 +679,15 @@ func _talk_keeper(id: String) -> void:
 static func npc_home(id: String) -> bool:
 	var h := Save.hour()
 	return not (Save.married and Save.partner == id) and (h >= 21.0 or h < 7.0)
+
+## Kai, Hana and Ren mind their shops from 9 till 5.
+static func npc_at_work(id: String) -> bool:
+	var h := Save.hour()
+	return id in ["kai", "hana", "ren"] and h >= 9.0 and h < 17.0 and not (Save.married and Save.partner == id)
+
+## A fertility visit at the clinic makes a baby much more likely for a week.
+static func fertile() -> bool:
+	return int(Save.flags.get("fertile_until", -1)) >= Save.day or cheat_on("fertile")
 
 static func npc_asleep(id: String) -> bool:
 	var h := Save.hour()
@@ -762,7 +824,7 @@ func stay_night(id: String) -> void:
 			d.romance = true
 			Save.add_hearts(id, 1.0)
 			var pending: Array = Save.family.get("others", [])
-			if Save.family.kids.size() + pending.size() < MAX_KIDS and not pending.any(func(o): return o.with == id) and (rng.randf() < 0.35 or cheat_on("fertile")):
+			if Save.family.kids.size() + pending.size() < MAX_KIDS and not pending.any(func(o): return o.with == id) and (rng.randf() < 0.35 or fertile()):
 				pending.append({"with": id, "due": Save.day + 5})
 				Save.family.others = pending
 			game.player.global_position = game.loc.nav.nearest_free(Vector3(-1.2, 0, 1.2))
@@ -791,6 +853,7 @@ func surprise_baby(o: Dictionary) -> void:
 		[id, "I didn't know how to tell you… This is our baby %s. I want them to know you." % kind]], func():
 		game.hud.ask_text("What will you name your baby %s?" % kind, names[rng.randi() % names.size()], func(nm: String):
 			Save.family.kids.append({"name": nm, "born": Save.day, "look": look, "parent": id})
+			_maybe_twin(id, nm)
 			Save.add_hearts(id, 1.0)
 			game.home.refresh_family()
 			Save.save()
@@ -839,9 +902,9 @@ func ask_baby(id: String) -> void:
 		game.hud.say([[id, "Silly, we're already expecting! Just a few more days."]])
 		return
 	if Save.family.kids.size() + pending.size() >= MAX_KIDS:
-		game.hud.say([[id, "Our home is full of little ones already. Let's love the ones we have."]])
+		game.hud.say([[id, "Twelve kids already! Let's love the ones we have."]])
 		return
-	if Save.hearts(id) < 8.5 and rng.randf() < 0.35:
+	if Save.hearts(id) < 8.5 and rng.randf() < 0.35 and not fertile():
 		game.hud.say([[id, "I… I love you. But I'm not ready for that yet. Ask me again someday?"]])
 		return
 	game.hud.say([[id, "A baby… with you? Yes. I'd love that."]], func():
@@ -879,6 +942,10 @@ func start_job(job: String) -> void:
 	match job:
 		"books": game.hud.minigames.books()
 		"bouquets": game.hud.minigames.bouquets()
+		"tailoring": game.hud.minigames.tailoring()
+		"gems": game.hud.minigames.gems()
+		"assembly": game.hud.minigames.assembly()
+		"nursery": game.hud.minigames.nursery()
 		"delivery": start_delivery()
 
 func festival_job() -> void:
@@ -917,6 +984,8 @@ var delivery := {}
 const DELIVERY_SPOTS := ["door_cafe", "door_homestore", "door_boutique", "door_florist", "door_jeweler", "door_bookshop", "house_hana", "house_ren", "house_yuki", "door_home"]
 
 func start_delivery() -> void:
+	if game.loc != game.city:
+		game.travel_now("city", game.shop_loc.shop if game.loc == game.shop_loc else "market")
 	var spots: Array = DELIVERY_SPOTS.duplicate()
 	spots.shuffle()
 	delivery = {"queue": spots.slice(0, 3), "t": 0.0, "pay": 0, "done": 0}
@@ -940,7 +1009,7 @@ func _next_delivery() -> void:
 	for it in game.city.interacts:
 		if it.id == target:
 			pos = it.pos
-			nm = String(it.label).replace("Shop at ", "").replace("Enter the café", "the café").replace("Sakura Apartments", "the apartments")
+			nm = String(it.label).replace("Enter the café", "the café").replace("Enter ", "").replace("Sakura Apartments", "the apartments")
 	delivery.t = 80.0
 	delivery.target = target
 	game.city.add_interact("delivery", pos, 1.0, "Deliver the crate", func(): deliver_crate())
@@ -1201,7 +1270,8 @@ func cheat(code: String) -> String:
 				game.home.refresh_family()
 				msg = "Look how they've grown!"
 			"freedecor":
-				for id in Furni.CATALOG: Save.furni_inv[id] = int(Save.furni_inv.get(id, 0)) + 1
+				for id in Furni.CATALOG:
+					if Furni.CATALOG[id][2] != "shop": Save.furni_inv[id] = int(Save.furni_inv.get(id, 0)) + 1
 				msg = "One of everything is in your storage (Edit mode)"
 			"nextchapter":
 				if not Story.active(): return "No story chapter is active"

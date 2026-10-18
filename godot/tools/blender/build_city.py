@@ -15,6 +15,34 @@ OUT = (args() or ["city.glb"])[0]
 reset()
 root = group("City")
 obs_n = [0]
+
+def gable(name, x, zc, w, d, h, rh, roof_col, wall_col, parent, over=0.25):
+    """A pitched roof on a box building: two sloped panels plus solid triangular gable ends."""
+    half = d / 2 + over
+    a = math.atan2(rh, half)
+    length = math.hypot(half, rh) + 0.06
+    for s, sgn in (("f", 1), ("b", -1)):
+        box("%s_roof_%s" % (name, s), (x, h + rh / 2 + 0.05, zc + sgn * half / 2), (w + 0.3, 0.14, length), roof_col, 0.02, parent=parent, rot=(sgn * a, 0, 0))
+    for e, ex in (("l", x - w / 2), ("r", x + w / 2)):
+        me = bpy.data.meshes.new(name + "_gable_" + e)
+        t = 0.06
+        verts = []
+        for dx in (-t, t):
+            for (gz, gy) in ((zc - d / 2, h), (zc + d / 2, h), (zc, h + rh)):
+                verts.append(g2b(ex + dx, gy, gz))
+        faces = [(0, 1, 2), (5, 4, 3), (0, 3, 4, 1), (1, 4, 5, 2), (2, 5, 3, 0)]
+        me.from_pydata([tuple(v) for v in verts], [], faces)
+        me.update()
+        ob = bpy.data.objects.new(name + "_gable_" + e, me)
+        bpy.context.scene.collection.objects.link(ob)
+        finish(ob, mat(wall_col), 0.0, parent=parent)
+        bpy.context.view_layer.objects.active = ob
+        ob.select_set(True)
+        bpy.ops.object.mode_set(mode="EDIT")
+        bpy.ops.mesh.select_all(action="SELECT")
+        bpy.ops.mesh.normals_make_consistent(inside=False)
+        bpy.ops.object.mode_set(mode="OBJECT")
+        ob.select_set(False)
 def obstacle(cx, cz, w, d):
     empty("obs_%d_%.2f_%.2f" % (obs_n[0], w, d), (cx, 0, cz), root)
     obs_n[0] += 1
@@ -41,6 +69,7 @@ SHOPS = [
     ("florist", 12.2, 5.2, 4.2, "CDEFC0", "4F9E47", "FF8AB0"),
     ("jeweler", 17.6, 4.6, 4.8, "C6DCFF", "4F72C8", "8DB4FF"),
     ("bookshop", 23.0, 5.4, 4.4, "EED2A8", "93603A", "E0A464"),
+    ("clinic", -45.0, 6.0, 4.6, "EAF7FF", "5FB8A8", "9FE0D0"),
 ]
 FZ = -4.2
 for sid, x, w, h, wall, roof, awn in SHOPS:
@@ -65,15 +94,7 @@ for sid, x, w, h, wall, roof, awn in SHOPS:
                         sphere("%s_fl_%d_%d_%d" % (sid, fl, k, f), (wx - 0.3 + f * 0.2, wy - 0.38, FZ + 0.2), 0.07, ["FF7EA6", "FFD24A", "FFFFFF", "C3A6FF"][f], parent=g)
     else:
         # a cute pitched roof
-        bpy.ops.mesh.primitive_cylinder_add(vertices=3, radius=1.0, depth=w + 0.3, location=g2b(x, h + 0.55, FZ - 3.0))
-        o = bpy.context.active_object
-        o.name = sid + "_roof"
-        o.scale = (1.0, 1.0, 1.0)
-        o.rotation_euler = (0, math.pi / 2, 0)
-        bpy.ops.object.transform_apply(rotation=True)
-        o.scale = (1.0, 3.6, 0.75)
-        bpy.ops.object.transform_apply(scale=True)
-        finish(o, mat(roof), 0.03, parent=g)
+        gable(sid, x, FZ - 3.0, w, 6.0, h, 1.3, roof, wall, g)
         # shop window(s)
         for s in (-1, 1):
             wx = x + s * (w * 0.28)
@@ -225,14 +246,7 @@ for hid, x, wall, roof in HOUSES:
     w, h = 5.0, 3.4
     box(hid + "_hbody", (x, h / 2, FZ - 2.5), (w, h, 5.0), wall, 0.03, parent=g)
     box(hid + "_hbase", (x, 0.2, FZ - 0.02), (w + 0.1, 0.4, 0.12), "E8D2C2", 0.02, parent=g)
-    bpy.ops.mesh.primitive_cylinder_add(vertices=3, radius=1.0, depth=w + 0.3, location=g2b(x, h + 0.6, FZ - 2.5))
-    o = bpy.context.active_object
-    o.name = hid + "_hroof"
-    o.rotation_euler = (0, math.pi / 2, 0)
-    bpy.ops.object.transform_apply(rotation=True)
-    o.scale = (1.0, 3.1, 0.85)
-    bpy.ops.object.transform_apply(scale=True)
-    finish(o, mat(roof), 0.03, parent=g)
+    gable(hid, x, FZ - 2.5, w, 5.0, h, 1.4, roof, wall, g)
     box(hid + "_chim", (x + 1.4, h + 1.2, FZ - 3.2), (0.4, 1.0, 0.4), "C8864E", 0.02, parent=g)
     box(hid + "_hdoor", (x, 1.0, FZ + 0.03), (0.95, 2.0, 0.1), roof, 0.02, parent=g)
     box(hid + "_hdoorframe", (x, 1.05, FZ + 0.015), (1.15, 2.2, 0.06), "FFFFFF", 0.02, parent=g)
@@ -265,14 +279,7 @@ g.parent = root
 HX, HW, HH = 47.5, 7.2, 5.4
 box("fs_body", (HX, HH / 2, FZ - 3.2), (HW, HH, 6.4), "FFF1E0", 0.03, parent=g)
 box("fs_base", (HX, 0.25, FZ - 0.02), (HW + 0.1, 0.5, 0.12), "E8D2C2", 0.02, parent=g)
-bpy.ops.mesh.primitive_cylinder_add(vertices=3, radius=1.0, depth=HW + 0.4, location=g2b(HX, HH + 0.75, FZ - 3.2))
-o = bpy.context.active_object
-o.name = "fs_roof"
-o.rotation_euler = (0, math.pi / 2, 0)
-bpy.ops.object.transform_apply(rotation=True)
-o.scale = (1.0, 3.9, 1.1)
-bpy.ops.object.transform_apply(scale=True)
-finish(o, mat("D9527E"), 0.03, parent=g)
+gable("fs", HX, FZ - 3.2, HW, 6.4, HH, 1.8, "D9527E", "FFF1E0", g)
 box("fs_door", (HX, 1.1, FZ + 0.03), (1.1, 2.2, 0.1), "8B5A3C", 0.02, parent=g)
 box("fs_doorframe", (HX, 1.15, FZ + 0.015), (1.3, 2.4, 0.06), "FFFFFF", 0.02, parent=g)
 sphere("fs_knob", (HX + 0.4, 1.05, FZ + 0.1), 0.045, GOLD, parent=g)
