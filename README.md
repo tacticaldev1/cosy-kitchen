@@ -33,7 +33,8 @@ How to play:
 - The town has a life of its own: townsfolk fall in love with each other, have babies and break up. A neglected partner may start seeing someone else (you might spot them by the fountain), and two sweethearts can find out about each other and make you choose.
 - Special days: the weekly Summer Festival, Market Sale Day, Critics' Week, Sweet Tooth Day and Heart Day.
 - The Summer Festival fills Main Street every 7th day from 4pm: food stalls, lantern strings and fireworks at 8:30pm. Run the takoyaki stall, scoop goldfish (win a goldfish bowl for your home), buy cotton candy or a fox mask, or bring your sweetheart on a festival date.
-- Side jobs: delivery runs for Kai's market (carry crates across town against the clock), arranging bouquets at Hana's, and shelving books at Ren's. Look for "Work a shift" in those shops (9am–6pm).
+- Walk inside every shop: Kai, Hana and Ren mind their counters from 9 to 5, and the shops close at night. The Hoshizora Clinic (west end) does check-ups, adoptions (baby, toddler or child) and fertility visits. Families can grow up to 12 kids, and twins happen.
+- Seven side jobs ("Work a shift" in the shop, 9am to 6pm): delivery runs for Kai, bouquets at Hana's, shelving at Ren's, sewing at Mimi's, polishing gems at Kobayashi's, assembling furniture at the Home Store and soothing babies in the clinic nursery.
 - Save up ¥120,000 to buy the house at the east end of the street: two rooms, a fireplace and a big kitchen. Or move in with your sweetheart, and ask them for a baby (always a tasteful fade to black).
 - Walk up to things and press E; the arrow shows what you'll use, and Tab switches between things that are close together (like the pot, pan and oven).
 - Sleep in your bed to end the day. Stay up past 2am and you'll faint!
