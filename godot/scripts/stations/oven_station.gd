@@ -13,7 +13,7 @@ var smoke: CPUParticles3D
 
 func _init() -> void:
 	super("oven", "Oven", 4)
-	proc = "bake"; verb = "Bake"; loop_name = "hum"; rate = 0.1
+	proc = "bake"; verb = "Bake"; loop_name = "hum"; rate = 0.045
 	cooking_text = "Baking… peek through the window"
 	item_scale = 1.1
 

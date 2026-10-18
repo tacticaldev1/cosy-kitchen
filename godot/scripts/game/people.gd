@@ -120,14 +120,67 @@ const LINES := {
 	},
 }
 
-## Date conversation: a question with three answers; the best answer gives extra hearts.
+## Date questions: [question, [answers], best answer, worst answer (-1 = none)].
 const DATES := {
-	"hana": [["Which flower do you think suits me?", ["A cherry blossom, gentle and bright.", "Hmm, a cactus?", "All of them. You make every flower look better."], 2],
-		["If you could live anywhere, where would you live?", ["Right here, in Hoshizora.", "A big city!", "Wherever you are."], 2]],
-	"ren": [["What's the last book that made you cry?", ["I don't really read...", "The one about the lighthouse. You lent it to me.", "A cookbook. The soufflé chapter."], 1],
-		["Do you believe in fate?", ["Not really.", "I believe in good timing. And good noodles.", "I think I do, now."], 2]],
-	"kai": [["Be honest. Tomato: fruit or vegetable?", ["Fruit, scientifically!", "Vegetable, in my kitchen!", "It's whatever makes you smile."], 2],
-		["What should we do next weekend?", ["Sleep in.", "The summer festival! Takoyaki and fireworks!", "Work at the café."], 1]],
-	"yuki": [["What colour is today?", ["Grey, it's cloudy.", "Peach. Like the evening sky.", "Whatever colour your paintbrush says."], 1],
-		["Would you sit for a portrait?", ["Only if you paint my good side.", "Only if you're in it with me.", "I'm too busy, sorry."], 1]],
+	"hana": [["Which flower do you think suits me?", ["A cherry blossom, gentle and bright.", "Hmm, a cactus?", "All of them. You make every flower look better."], 2, 1],
+		["If you could live anywhere, where would you live?", ["Right here, in Hoshizora.", "A big city!", "Wherever you are."], 2, 1],
+		["Do you think I talk to my plants too much?", ["A little, yeah.", "They grow so well. They must love it.", "Plants can't hear you."], 1, 2],
+		["What would you name a new rose?", ["The Hana.", "Rose #47.", "Sakura Sunrise."], 0, 1],
+		["Rainy days: cosy or gloomy?", ["Gloomy, ugh.", "Cosy, with tea and you.", "I don't notice the weather."], 1, 0],
+		["Would you ever open a flower café with me?", ["Flowers AND pancakes? Yes!", "Sounds like a lot of work.", "Only if I'm in charge."], 0, 1]],
+	"ren": [["What's the last book that made you cry?", ["I don't really read...", "The one about the lighthouse. You lent it to me.", "A cookbook. The soufflé chapter."], 1, 0],
+		["Do you believe in fate?", ["Not really.", "I believe in good timing. And good noodles.", "I think I do, now."], 2, 0],
+		["Would you read my poems someday?", ["Every single one.", "If they're short.", "Poems are boring."], 0, 2],
+		["Paper books or screens?", ["Paper. The smell!", "Screens, they're lighter.", "Audiobooks while cooking."], 0, 1],
+		["What's your idea of a perfect quiet evening?", ["A party with friends!", "Rain, tea, two books and you.", "Working late."], 1, 2],
+		["If you were a character in a novel, what genre?", ["Romance, obviously.", "A cosy mystery.", "Horror. Have you seen my kitchen?"], 1, 2]],
+	"kai": [["Be honest. Tomato: fruit or vegetable?", ["Fruit, scientifically!", "Vegetable, in my kitchen!", "It's whatever makes you smile."], 2, -1],
+		["What should we do next weekend?", ["Sleep in.", "The summer festival! Takoyaki and fireworks!", "Work at the café."], 1, 2],
+		["Arm wrestle? Right now?", ["You're on!", "I'd rather not.", "Only if the loser buys dinner."], 2, 1],
+		["Which veggie is the most underrated?", ["Daikon, obviously.", "Veggies are all the same.", "Lotus root. So crunchy!"], 2, 1],
+		["Would you get up at four to pick cabbages with me?", ["Four?! Absolutely not.", "For you? I'll bring coffee.", "Only on weekends."], 1, 0],
+		["What's my best quality?", ["Your laugh.", "Your muscles?", "Your cabbages."], 0, 2]],
+	"yuki": [["What colour is today?", ["Grey, it's cloudy.", "Peach. Like the evening sky.", "Whatever colour your paintbrush says."], 1, 0],
+		["Would you sit for a portrait?", ["Only if you paint my good side.", "Only if you're in it with me.", "I'm too busy, sorry."], 1, 2],
+		["Sunrise or sunset?", ["Sunset, when the café lights come on.", "Neither, I'm asleep.", "Sunrise, with you."], 2, 1],
+		["What would you paint, if you could?", ["Your smile.", "The cherry tree, like you.", "Nothing, I can't draw."], 0, 2],
+		["Do you think quiet people are boring?", ["Quiet people notice everything.", "A little, sometimes.", "I love quiet with you."], 2, 1],
+		["If we were a painting, which one?", ["A rainy café window.", "A busy city street.", "Two people under one umbrella."], 2, 1]],
+}
+
+## Questions anyone might ask on any date.
+const QUESTIONS := [
+	["What's your comfort food?", ["Fluffy pancakes, always.", "Instant noodles at 2am.", "Whatever you're having."], 2, -1],
+	["Do you believe in love at first sight?", ["Should I walk past you again?", "No, love takes time.", "I've never thought about it."], 0, 2],
+	["What's your biggest dream?", ["A café the whole town loves.", "To be rich.", "A family and a garden."], 2, 1],
+	["Cats or dogs?", ["Cats. Mochi rules the café.", "Dogs, obviously.", "Both, in a big pile."], 2, -1],
+	["What scares you the most?", ["Burnt rice.", "Losing the people I love.", "Spiders. Big ones."], 1, 0],
+	["What do you notice first about someone?", ["Their smile.", "Their shoes.", "Their cooking."], 0, 1],
+	["Summer festival or winter lights?", ["Summer fireworks!", "Winter lights and hot cocoa.", "Whichever one you're at."], 2, -1],
+	["Would you rather fly or read minds?", ["Fly, over the cherry trees.", "Read minds… wait, can you?", "Neither, I like surprises."], 0, -1],
+]
+
+## Kinds of dates: where, when (hours), cost and which spot the scene uses.
+const DATE_TYPES := {
+	"icecream": {"name": "Ice cream by the fountain", "cost": 1500, "from": 9, "to": 20, "spot": "bench", "line": "You share soft-serve cones on a bench by the fountain while kids chase pigeons."},
+	"picnic": {"name": "Picnic under the cherry trees", "cost": 2000, "from": 9, "to": 18, "spot": "picnic", "line": "You spread a gingham blanket under the cherry blossoms. Onigiri, strawberries and petals everywhere."},
+	"painting": {"name": "Painting in the park", "cost": 1200, "from": 9, "to": 18, "spot": "picnic", "line": "You sit side by side with little canvases. Yours looks like a potato. Theirs is beautiful."},
+	"books": {"name": "Browsing Ren's Books", "cost": 1000, "from": 9, "to": 20, "spot": "bookshop", "line": "You read the first lines of random books out loud to each other and try not to laugh too loudly."},
+	"shopping": {"name": "Shopping spree at Mimi's", "cost": 3000, "from": 10, "to": 20, "spot": "boutique", "line": "Mimi makes you try on matching scarves. You buy them. Of course you buy them."},
+	"market": {"name": "Food tasting at the market", "cost": 1500, "from": 8, "to": 19, "spot": "market", "line": "You taste every sample at the market: pickles, mochi, the spiciest radish in Japan."},
+	"flowers": {"name": "Flower arranging at the florist", "cost": 1500, "from": 9, "to": 19, "spot": "florist", "line": "You make little bouquets for each other. Yours is mostly daisies and enthusiasm."},
+	"dinner": {"name": "Candlelit dinner at your café", "cost": 2500, "from": 17, "to": 23, "spot": "cafe", "line": "You close the café early, light a candle and cook something special for two."},
+	"movie": {"name": "Movie night at your place", "cost": 800, "from": 18, "to": 26, "spot": "home", "line": "A blanket, a bowl of popcorn, and a romance movie that makes you both cry."},
+	"stargazing": {"name": "Stargazing by the fountain", "cost": 0, "from": 20, "to": 26, "spot": "fountain", "line": "The town lights go out one by one. You count shooting stars and make secret wishes."},
+}
+const DATE_LIKES := {"hana": ["flowers", "picnic", "dinner"], "ren": ["books", "stargazing", "movie"], "kai": ["market", "dinner", "picnic"], "yuki": ["painting", "stargazing", "icecream"]}
+const DATE_DISLIKES := {"hana": ["market"], "ren": ["shopping"], "kai": ["books"], "yuki": ["shopping"]}
+
+## Things the town does on special days.
+const EVENTS := {
+	"festival": ["Sakura Festival", "Lanterns everywhere! The café gets busier and tips are 50% bigger today."],
+	"sale": ["Market Sale Day", "Kai's market has everything at half price today."],
+	"critics": ["Critics' Week", "Food critics are touring the prefecture. Expect a visit!"],
+	"sweet": ["Sweet Tooth Day", "Everyone's craving desserts and drinks today (bonus tips for them)."],
+	"hearts": ["Heart Day", "Love is in the air: dates and gifts mean twice as much today."],
 }

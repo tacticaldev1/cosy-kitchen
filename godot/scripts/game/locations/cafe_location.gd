@@ -124,10 +124,12 @@ func _build_interacts() -> void:
 	for k in stations:
 		var st: Station = stations[k]
 		var kk: String = k
-		var it := {"id": "st_" + k, "pos": stand[k], "r": 0.75, "label": "Use the " + Game.LABEL[k], "act": func(): game.open_station(kk), "h": 1.1}
+		var tall := 0.45 if k in ["oven", "freezer", "bin"] else 0.12
+		var it := {"id": "st_" + k, "pos": stand[k], "r": 0.75, "label": "Use the " + Game.LABEL[k], "act": func(): game.open_station(kk), "h": 1.1, "at": st.global_position + Vector3(0, tall, 0)}
 		interacts.append(it)
 	add_interact("fridge", stand["fridge"], 0.8, "Open the fridge", func(): game.hud.open_fridge())
 	interacts.back().h = 1.4
+	interacts.back().at = room.mark("fridge") + Vector3(0, 1.1, 0)
 	add_interact("door", room.mark("door"), 0.8, "Go outside", func(): game.travel("city", "cafe"))
 	add_interact("sign", room.mark("door") + Vector3(-0.3, 0, -0.75), 0.75, "Flip the OPEN sign", func(): game.shop.toggle())
 

@@ -10,9 +10,10 @@ const SKINS := [Color("FFE2D2"), Color("FFE6D6"), Color("F2CDB0"), Color("FFEADF
 const HAIRS := [Color("4B2E5A"), Color("E8A04A"), Color("6A4AC8"), Color("3A2A2A"), Color("F2B8C8"), Color("8A4A2A"), Color("2E3A5A"), Color("FFE08A"), Color("9BD8F0"), Color("F2F2F8"), Color("E8504A"), Color("6BBF89")]
 const SHIRTS := [Color("8B7BC9"), Color("7FD3B8"), Color("FF9EBB"), Color("FFD24A"), Color("A9C8FF"), Color("B7E3A0"), Color("FFB86A"), Color("F2F2F8"), Color("E8504A"), Color("3B4A7A")]
 const PANTS := [Color("5A4A70"), Color("3B4A7A"), Color("8A6A4A"), Color("2E2A3A"), Color("FFC2D6"), Color("BDEBDD")]
-const STYLES := ["bob", "buns", "twin", "short", "long", "pony", "spiky", "curly", "pixie", "braid", "topknot", "afro", "mohawk", "wavy", "sidepart", "buzz", "drills", "bowl"]
+const STYLES := ["bob", "buns", "twin", "short", "long", "pony", "spiky", "curly", "pixie", "braid", "topknot", "afro", "mohawk", "wavy", "sidepart", "buzz", "drills", "bowl",
+	"quiff", "slick", "undercut", "manbun", "messy", "curtains", "dreads", "wolf"]
 const F_STYLES := ["bob", "buns", "twin", "long", "pony", "curly", "pixie", "braid", "topknot", "afro", "wavy", "drills", "bowl"]
-const M_STYLES := ["short", "spiky", "curly", "bob", "afro", "mohawk", "sidepart", "buzz", "topknot", "bowl"]
+const M_STYLES := ["short", "spiky", "curly", "bob", "afro", "mohawk", "sidepart", "buzz", "topknot", "bowl", "quiff", "slick", "undercut", "manbun", "messy", "curtains", "dreads", "wolf"]
 const BOTTOMS := ["pants", "shorts", "skirt", "dress"]
 
 var look := {}
@@ -208,8 +209,55 @@ func _arm(shirt: Color, skin: Color, s: float) -> Node3D:
 	body.add_child(a)
 	return a
 
+static func _sideburns(mb: MB) -> void:
+	for s in [-1.0, 1.0]:
+		mb.at(Vector3(s * 0.142, -0.015, 0.045), Vector3(0, 0, s * 0.15)); mb.ellipsoid(0.022, 0.05, 0.03, 10, 6); mb.pop()
+
 static func _hair(mb: MB, style: String, c: Color) -> void:
 	mb.col(c, 1.0, 0.35)
+	# swept-back and textured styles that skip the usual fringe
+	match style:
+		"quiff":
+			mb.at(Vector3(0, 0.035, -0.03)); mb.ellipsoid(0.155, 0.142, 0.138, 28, 16); mb.pop()
+			mb.at(Vector3(0, 0.17, 0.05), Vector3(-0.6, 0, 0)); mb.ellipsoid(0.125, 0.075, 0.11, 20, 10); mb.pop()
+			mb.at(Vector3(0.02, 0.21, 0.12), Vector3(-1.1, 0, 0.2)); mb.ellipsoid(0.08, 0.04, 0.07, 14, 8); mb.pop()
+			_sideburns(mb)
+			return
+		"slick":
+			mb.at(Vector3(0, 0.04, -0.035)); mb.ellipsoid(0.156, 0.142, 0.14, 28, 16); mb.pop()
+			mb.at(Vector3(0, 0.115, 0.085), Vector3(-0.4, 0, 0)); mb.ellipsoid(0.115, 0.045, 0.055, 18, 8); mb.pop()
+			_sideburns(mb)
+			mb.col(c.lightened(0.35), 0.0, 0.9)
+			for k in 4:
+				var x := -0.06 + k * 0.04
+				mb.tube(MB.spline3(PackedVector3Array([Vector3(x, 0.13, 0.07), Vector3(x * 1.1, 0.17, -0.02), Vector3(x * 1.2, 0.12, -0.13)]), 4), 0.004, 4)
+			return
+		"undercut":
+			mb.col(c.darkened(0.25), 1.0, 0.2)
+			mb.at(Vector3(0, 0.03, -0.02)); mb.ellipsoid(0.153, 0.138, 0.14, 28, 16); mb.pop()
+			mb.col(c, 1.0, 0.35)
+			mb.at(Vector3(0.02, 0.14, 0.0), Vector3(0, 0, -0.25)); mb.ellipsoid(0.13, 0.06, 0.13, 22, 10); mb.pop()
+			mb.at(Vector3(0.07, 0.11, 0.09), Vector3(-0.3, 0, -0.6)); mb.ellipsoid(0.08, 0.03, 0.06, 14, 8); mb.pop()
+			return
+		"manbun":
+			mb.at(Vector3(0, 0.035, -0.035)); mb.ellipsoid(0.157, 0.145, 0.14, 28, 16); mb.pop()
+			mb.at(Vector3(0, 0.16, -0.12)); mb.sphere(0.06, 14, 10); mb.pop()
+			mb.at(Vector3(0, 0.11, 0.085), Vector3(-0.4, 0, 0)); mb.ellipsoid(0.11, 0.04, 0.05, 18, 8); mb.pop()
+			_sideburns(mb)
+			mb.col(Color("3B2340")); mb.at(Vector3(0, 0.11, -0.12), Vector3(0.6, 0, 0)); mb.torus(0.035, 0.007, 14, 6); mb.pop(); mb.col(c)
+			for s in [-1.0, 1.0]:
+				mb.tube(MB.spline3(PackedVector3Array([Vector3(s * 0.07, 0.1, 0.11), Vector3(s * 0.12, 0.02, 0.1), Vector3(s * 0.13, -0.06, 0.07)]), 4), 0.008, 5)
+			return
+		"dreads":
+			mb.at(Vector3(0, 0.035, -0.03)); mb.ellipsoid(0.158, 0.146, 0.14, 28, 16); mb.pop()
+			for i in 16:
+				var a := -2.3 + i * 0.31
+				var top := Vector3(sin(a) * 0.14, 0.08 + cos(a * 0.5) * 0.04, cos(a) * 0.12 - 0.03)
+				if top.z > 0.06 and absf(top.x) < 0.09: continue
+				mb.tube(PackedVector3Array([top, top + Vector3(sin(a) * 0.04, -0.18 - (i % 3) * 0.03, 0)]), 0.014, 6)
+			for i in 5:
+				mb.at(Vector3(-0.08 + i * 0.04, 0.1, 0.11)); mb.sphere(0.022, 8, 6); mb.pop()
+			return
 	# close-cropped styles: a snug cap with no fringe
 	if style == "buzz" or style == "mohawk":
 		mb.col(c.darkened(0.08) if style == "mohawk" else c, 1.0, 0.25)
@@ -305,6 +353,24 @@ static func _hair(mb: MB, style: String, c: Color) -> void:
 					hp.append(Vector3(s * 0.16 + cos(a) * 0.03, 0.02 - k * 0.008, -0.02 + sin(a) * 0.03))
 				mb.tube(hp, func(t: float) -> float: return 0.028 * (1.0 - t * 0.55), 8)
 				mb.col(Color("FF7EA6")); mb.at(Vector3(s * 0.15, 0.06, -0.03)); mb.sphere(0.024, 8, 6); mb.pop(); mb.col(c)
+		"messy":
+			var rng := RandomNumberGenerator.new()
+			rng.seed = 7
+			for i in 12:
+				var a := rng.randf() * TAU
+				var el := rng.randf_range(0.2, 1.2)
+				var dir := Vector3(cos(a) * sin(el), cos(el), sin(a) * sin(el))
+				mb.at(Vector3(0, 0.03, -0.03) + dir * 0.15, Vector3(-dir.z * 1.2, 0, dir.x * 1.2)); mb.cone(0.03, 0.08, 8); mb.pop()
+		"curtains":
+			for s in [-1.0, 1.0]:
+				mb.at(Vector3(s * 0.06, 0.06, 0.1), Vector3(-0.3, 0, s * 0.7)); mb.ellipsoid(0.07, 0.05, 0.03, 14, 8); mb.pop()
+			mb.at(Vector3(0, 0.0, -0.08)); mb.ellipsoid(0.15, 0.12, 0.09, 20, 10); mb.pop()
+		"wolf":
+			for i in 7:
+				var a := -1.2 + i * 0.4
+				mb.at(Vector3(sin(a) * 0.13, -0.06, cos(a) * 0.06 - 0.11), Vector3(0.3, 0, -a * 0.4)); mb.cone(0.035, 0.1, 8); mb.pop()
+			for s in [-1.0, 1.0]:
+				mb.at(Vector3(s * 0.14, -0.02, 0.02), Vector3(0, 0, s * 0.25)); mb.ellipsoid(0.035, 0.08, 0.05, 10, 8); mb.pop()
 		"curly":
 			for i in 14:
 				var a := i * TAU / 14.0

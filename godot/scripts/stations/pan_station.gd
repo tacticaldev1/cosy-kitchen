@@ -12,7 +12,7 @@ var crack_t := 0.0
 
 func _init() -> void:
 	super("pan", "Pan", 4)
-	proc = "fry"; verb = "Fry"; loop_name = "sizzle"; rate = 0.14
+	proc = "fry"; verb = "Fry"; loop_name = "sizzle"; rate = 0.065
 	cooking_text = "Sizzling… swipe up to flip"
 	item_scale = 0.8
 

@@ -13,7 +13,7 @@ var bloop_t := 0.0
 
 func _init() -> void:
 	super("pot", "Pot", 6)
-	proc = "boil"; verb = "Boil"; loop_name = "boil"; rate = 0.12
+	proc = "boil"; verb = "Boil"; loop_name = "boil"; rate = 0.055
 	cooking_text = "Bubbling away… stir if you like"
 	item_scale = 0.5
 

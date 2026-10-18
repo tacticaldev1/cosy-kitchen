@@ -55,7 +55,7 @@ func step(dt: float) -> void:
 	Toon.set_param(contents, &"frost", p if run else 0.0)
 	if win: Toon.set_param(win, &"frost", p * 0.8 if run else 0.0)
 	if not run: return
-	p += dt * 0.22
+	p += dt * 0.1
 	frost_t -= dt
 	if frost_t <= 0.0:
 		frost_t = randf_range(0.08, 0.25)

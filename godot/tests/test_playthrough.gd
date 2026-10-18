@@ -112,6 +112,9 @@ func use(id: String) -> bool:
 		t.check(false, "there's a '%s' to use in %s" % [id, game.loc.key])
 		return false
 	walk(it.pos, id)
+	for k in 6:   # like a player pressing Tab to aim at the right thing
+		if game.focus.get("kind", "") == "it" and game.focus.it.id == id: break
+		game.cycle_focus()
 	if game.focus.get("kind", "") != "it" or game.focus.it.id != id:
 		walk_issues.append("standing at '%s' but E would do '%s'" % [id, game.focus.get("label", "nothing")])
 		it.act.call()
@@ -373,11 +376,14 @@ func love_and_family() -> void:
 	game.city.set_hour(Save.hour())
 	talk_to(game.city.people.yuki)
 	t.check(choose("Ask on a date"), "Yuki: Ask on a date")
+	t.check(choose("Painting in the park"), "pick her favourite: Painting in the park")
 	step(0.2)
 	read_all()
-	t.check(game.player.sitting and game.city._couple == "yuki", "on the park bench with Yuki")
-	t.check(choose(People.DATES.yuki[0][1][1]), "answer Yuki's question")
-	read_all()
+	t.check(game.player.sitting and game.city._couple == "yuki", "on a picnic blanket with Yuki")
+	for k in 2:
+		var q: Array = game.life._date_state.qs[game.life._date_state.i]
+		t.check(choose(q[1][int(q[2])]), "answer Yuki: %s" % q[1][int(q[2])])
+		read_all()
 	t.check(not game.player.sitting and int(Save.r("yuki").dates) == 1, "the date ends and you can walk again")
 	talk_to(game.city.people.yuki)
 	t.check(choose("Ask to be your partner"), "ask Yuki to be your partner")

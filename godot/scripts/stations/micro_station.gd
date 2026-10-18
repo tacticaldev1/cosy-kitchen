@@ -3,6 +3,7 @@ class_name MicroStation
 extends Station
 
 const READY := 0.62
+const SPEED := 3.6   # microwave seconds per real second (slower = more time to react)
 var run := false
 var buf := ""
 var el := 0.0
@@ -31,7 +32,7 @@ func attach(mo: Node3D) -> void:
 		keys.append(k)
 	_disp()
 
-func ck() -> float: return el * 8.0 / 60.0
+func ck() -> float: return el * SPEED / 60.0
 
 func slot(i: int, n: int) -> Vector3:
 	return Vector3((i - (n - 1) * 0.5) * 0.07, 0, 0)
@@ -94,7 +95,7 @@ func press(i: int) -> void:
 func _disp() -> void:
 	if not display: return
 	if run:
-		var r := maxi(0, ceili(set_sec - el * 8.0))
+		var r := maxi(0, ceili(set_sec - el * SPEED))
 		display.text = "%d:%02d" % [r / 60, r % 60]
 	else:
 		display.text = fmt(buf)
@@ -136,7 +137,7 @@ func auto() -> void:
 		buf = "50"
 		start()
 	else:
-		el = 50.0 / 8.0
+		el = 50.0 / SPEED
 		finish()
 
 func on_items_changed() -> void:
@@ -173,7 +174,7 @@ func step(dt: float) -> void:
 		Sfx.play("beep")
 		if game.open_key != key: game.toast("Quick! The microwave is about to burn it")
 	_update_preview(c)
-	if set_sec - el * 8.0 <= 0.0: finish()
+	if set_sec - el * SPEED <= 0.0: finish()
 
 func _pop() -> void:
 	if pops.size() > 40: return

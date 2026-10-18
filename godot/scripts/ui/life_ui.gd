@@ -111,7 +111,8 @@ func carry_changed() -> void:
 func update(dt: float) -> void:
 	var h := Save.hour()
 	place_lbl.text = game.loc.title if game.loc else ""
-	time_lbl.text = "Day %d · %s%s" % [Save.day, Save.time_text(), "  ·  café open" if game.shop.open else ""]
+	var ev: String = Save.flags.get("event", "")
+	time_lbl.text = "Day %d · %s%s%s" % [Save.day, Save.time_text(), "  ·  café open" if game.shop.open else "", ("  ·  " + People.EVENTS[ev][0]) if People.EVENTS.has(ev) else ""]
 	var night := h >= 19.5 or h < 6.0
 	var ic := "moon" if night else ("rain" if Save.weather == "rain" else "sun")
 	if weather_ic.get_meta("ic", "") != ic:
@@ -125,7 +126,7 @@ func update(dt: float) -> void:
 	var show := f.size() > 0 and not hud.modal_open() and game.open_key == "" and not game.cutscene
 	prompt.visible = show
 	if show:
-		var t := "E  ·  " + String(f.label)
+		var t := "E  ·  " + String(f.label) + ("      Tab ⇄ next" if f.get("more", false) else "")
 		if prompt_lbl.text != t:
 			prompt_lbl.text = t
 			prompt.reset_size()
@@ -410,7 +411,8 @@ func _buy(price: int) -> bool:
 	return true
 
 static func market_price(k: String) -> int:
-	return maxi(10, int(round(G.ING_COST.get(k, 0) * 0.6 / 10.0)) * 10)
+	var sale := 0.5 if Save.flags.get("event", "") == "sale" else 1.0
+	return maxi(10, int(round(G.ING_COST.get(k, 0) * 0.6 * sale / 10.0)) * 10)
 
 var _market_cat := "fruit"
 func _shop_market() -> void:

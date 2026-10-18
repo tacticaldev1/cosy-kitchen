@@ -78,14 +78,16 @@ func nearest_interact(p: Vector3) -> Dictionary:
 ## Screen-space pick of an interactable near the mouse.
 func pick_interact(screen: Vector2, cam: Camera3D) -> Dictionary:
 	var best := {}
-	var bd := 70.0
+	var bd := 95.0
 	for it in interacts:
-		var w: Vector3 = it.pos + Vector3(0, it.get("h", 0.9), 0)
-		if not cam.is_position_in_frustum(w): continue
-		var d := cam.unproject_position(w).distance_to(screen)
-		if d < bd:
-			bd = d
-			best = it
+		var pts: Array = [it.pos + Vector3(0, it.get("h", 0.9), 0)]
+		if it.has("at"): pts.append(it.at)
+		for w in pts:
+			if not cam.is_position_in_frustum(w): continue
+			var d := cam.unproject_position(w).distance_to(screen)
+			if d < bd:
+				bd = d
+				best = it
 	return best
 
 ## Screen-space pick of a person near the mouse.

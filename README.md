@@ -28,7 +28,11 @@ How to play:
 - Chat with Hana, Ren, Kai and Yuki, flirt, give gifts, go on dates, become partners, propose with a ring and get married. With a double bed and a crib at home, you can start a family.
 - Life has drama too. You can keep a secret sweetheart behind your partner's back, but word gets around: get caught and you'll face a confrontation, and maybe a break-up or a divorce. Gossiping about friends can get back to them. A night at a sweetheart's cottage can lead to a surprise baby (always a tasteful fade to black).
 - Each townsperson has a cottage at the ends of the street. Knock in the evening, or sneak in and snoop around… if you dare.
-- 18 hairstyles, including braid, topknot, afro, mohawk, wavy, side part, buzz cut, drills, bowl cut and pixie.
+- 26 hairstyles, including braid, topknot, afro, mohawk, wavy, side part, buzz cut, drills, bowl cut, pixie, quiff, slick back, undercut, man bun, messy, curtains, dreads and wolf cut.
+- Ten kinds of dates (ice cream, picnics, painting, the bookshop, shopping, market tasting, flower arranging, candlelit dinner at your café, movie night, stargazing), each with two questions from a big pool. Everyone has favourite dates.
+- The town has a life of its own: townsfolk fall in love with each other, have babies and break up. A neglected partner may start seeing someone else (you might spot them by the fountain), and two sweethearts can find out about each other and make you choose.
+- Special days: Sakura Festival, Market Sale Day, Critics' Week, Sweet Tooth Day and Heart Day.
+- Walk up to things and press E; the arrow shows what you'll use, and Tab switches between things that are close together (like the pot, pan and oven).
 - Sleep in your bed to end the day. Stay up past 2am and you'll faint!
 - Make your chef feminine or masculine, with trousers, shorts, a skirt or a dress, and change it any time at the Boutique or your wardrobe.
 - Cheats: press `` ` `` (backtick) or open Settings → **Cheat menu** for 28 cheats in seven groups (money, cooking, café, you, time, love, stuff), including toggles like endless energy, speedy shoes, free ingredients and patient customers. You can also type codes like `kaching`, `millionaire`, `cookbook`, `fivestars`, `lovebirds`, `quickwedding` or `storkdelivery`.

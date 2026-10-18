@@ -138,7 +138,8 @@ func pick_order(kind: String, fav := "") -> int:
 	if kind == "critic":
 		pool = pool.filter(func(r): return G.difficulty(r) >= 3)
 	if special >= 0 and randf() < 0.18: return special
-	var w: Array = pool.map(func(r): return (1.4 if Save.is_found(r.id) else 1.0) / maxf(1.0, G.difficulty(r) - 1.0))
+	var sweet: bool = Save.flags.get("event", "") == "sweet"
+	var w: Array = pool.map(func(r): return (1.4 if Save.is_found(r.id) else 1.0) / maxf(1.0, G.difficulty(r) - 1.0) * (3.0 if sweet and r.cat in ["desserts", "drinks"] else 1.0))
 	var tot := 0.0
 	for x in w: tot += x
 	var x := randf() * tot
@@ -153,6 +154,7 @@ func _want_critic() -> bool:
 		return true
 	if critic_today: return false
 	if Story.active() and Save.chapter == 3 and not Save.flags.get("critic4", false): return stats.get("served", 0) >= 2
+	if Save.flags.get("event", "") == "critics": return randf() < 0.3
 	return Save.reputation >= 1.5 and randf() < 0.06 + Save.reputation * 0.01
 
 func spawn() -> void:
@@ -219,7 +221,7 @@ func take_order(c: Customer) -> void:
 	var r: Dictionary = G.RECIPES[rid]
 	c.order = rid
 	c.state = "order"
-	c.pmax = (100.0 + 28.0 * (G.difficulty(r) - 1) + G.build_steps(r).size() * 6.0) * (1.3 if c.ckind == "regular" else 0.85 if c.ckind == "critic" else 1.0)
+	c.pmax = (140.0 + 40.0 * (G.difficulty(r) - 1) + G.build_steps(r).size() * 9.0) * (1.3 if c.ckind == "regular" else 0.85 if c.ckind == "critic" else 1.0)
 	if game.cafe.furni.has_item("record"): c.pmax *= 1.25
 	c.patience = c.pmax
 	c.t = 0.0
@@ -270,6 +272,10 @@ func serve_order(c: Customer, foods: Array, d: Dictionary, q: String) -> void:
 	tip += int(round(r.price * Save.reputation * 0.02))
 	if r.id == special: tip += int(round(r.price * 0.5))
 	if game.cafe.furni.has_item("lucky_cat"): tip += int(round(r.price * 0.05))
+	match Save.flags.get("event", ""):
+		"festival": tip += int(round((price + tip) * 0.5))
+		"sweet":
+			if r.cat in ["desserts", "drinks"]: tip += int(round(r.price * 0.3))
 	Save.wallet += price + tip
 	Save.served_total += 1
 	Save.stars_total += stars + (2 if c.ckind == "critic" and stars == 3 else 0)
@@ -346,6 +352,7 @@ func update(dt: float) -> void:
 			changed.emit()
 		var gap := maxf(7.0, 24.0 - Save.reputation * 3.0 - Save.level() * 0.6 + randf() * 10.0)
 		if game.cafe.furni.has_item("flowers"): gap *= 0.85
+		if Save.flags.get("event", "") == "festival": gap *= 0.7
 		if Save.weather == "rain": gap *= 1.15
 		if not last_orders and game.clock > next_t and free_seat() >= 0:
 			spawn()

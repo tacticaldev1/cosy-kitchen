@@ -248,6 +248,8 @@ func set_hour(h: float) -> void:
 		var at_home_with_you: bool = Save.married and Save.partner == id
 		c.visible = (out and not at_home_with_you) or _couple == id or _wedding
 	for w in walkers: w.visible = h >= 7.0 and h < 21.5
+	refresh_npc_kids()
+	for k in npc_kid_nodes: k.visible = h >= 8.0 and h < 19.0
 	people.jiro.visible = (h >= 7.0 and h < 19.0) or _wedding
 
 func tick(dt: float) -> void:
@@ -282,6 +284,87 @@ func tick(dt: float) -> void:
 			_confetti_t = 0.35
 			game.burst(Vector3(rng.randf_range(-1.2, 1.2), 2.0, 10.9 + rng.randf_range(-0.5, 0.5)), [Color("FF7EA6"), Color("FFD24A"), Color.WHITE, Color("C3A6FF"), Color("7FD3B8")], 14, 1.3)
 
+var _blanket: Node3D
+var _affair_on := false
+var npc_kid_nodes: Array = []
+
+## Date scenes: where the two of you sit or stand.
+func stage_couple(id: String, spot: String) -> void:
+	if spot == "bench":
+		seat_couple(id)
+		return
+	_couple = id
+	var c: Chibi = people[id]
+	c.visible = true
+	c.stop()
+	var p := game.player
+	match spot:
+		"picnic":
+			if _blanket == null:
+				var mb := MB.new()
+				for i in 6:
+					for j in 4:
+						mb.col(Color("FF9EBB") if (i + j) % 2 else Color("FFF8EE"), 0.0, 0.1)
+						mb.at(Vector3(-0.6 + i * 0.24 + 0.12, 0.012, -0.36 + j * 0.24 + 0.12)); mb.rbox(Vector3(0.24, 0.012, 0.24), 0.002, 1); mb.pop()
+				mb.col(Color("FFD24A"), 1.0, 0.4); mb.at(Vector3(0, 0.06, 0.15)); mb.rbox(Vector3(0.28, 0.1, 0.18), 0.03, 2); mb.pop()
+				mb.col(Color("F2545B"), 1.0, 0.5)
+				for k in 4:
+					mb.at(Vector3(-0.1 + k * 0.06, 0.045, -0.15)); mb.sphere(0.03, 8, 6); mb.pop()
+				_blanket = FoodArt.mesh_node(FoodArt.finish(mb))
+				add_child(_blanket)
+			_blanket.visible = true
+			_blanket.global_position = Vector3(-5.2, 0.0, 7.9)
+			c.sit_at(Vector3(-4.75, 0, 7.9), -PI * 0.5, 0.08)
+			p.sit_at(Vector3(-5.65, 0, 7.9), PI * 0.5, 0.08)
+		"fountain":
+			c.sit_at(Vector3(0.32, 0, 10.05), 0.0, 0.5)
+			p.sit_at(Vector3(-0.32, 0, 10.05), 0.0, 0.5)
+		_:
+			var d := room.mark("door_" + spot) if room.has_mark("door_" + spot) else Vector3(0, 0, -3)
+			c.global_position = nav.nearest_free(d + Vector3(0.38, 0, 0.55))
+			c.rotation.y = -PI * 0.5
+			p.global_position = nav.nearest_free(d + Vector3(-0.38, 0, 0.55))
+			p.rotation.y = PI * 0.5
+	c.feel("happy", 30.0)
+	set_hour(Save.hour())
+
+## Your partner, out with someone else (you might spot them by the fountain).
+func affair_scene(on: bool) -> void:
+	if on == _affair_on: return
+	_affair_on = on
+	var aff: Dictionary = Save.flags.get("affair", {})
+	if on and aff.size() and Save.partner != "":
+		var a: Chibi = people[Save.partner]
+		var b: Chibi = people[String(aff.with)]
+		for x in [a, b]:
+			x.stop()
+			x.visible = true
+			x.set_meta("pause", 99999.0)
+		a.global_position = Vector3(-0.3, 0, 10.4)
+		a.rotation.y = PI * 0.5
+		b.global_position = Vector3(0.3, 0, 10.4)
+		b.rotation.y = -PI * 0.5
+		a.feel("happy", 9999.0)
+		b.feel("happy", 9999.0)
+	else:
+		for id in People.NPCS:
+			people[id].set_meta("pause", 0.0)
+		set_hour(Save.hour())
+
+## Townsfolk's own children play near their parents' spots.
+func refresh_npc_kids() -> void:
+	var kids: Array = Save.flags.get("npc_kids", [])
+	while npc_kid_nodes.size() < kids.size():
+		var k: Dictionary = kids[npc_kid_nodes.size()]
+		var c := Chibi.new()
+		add_child(c)
+		var age := Save.day - int(k.born)
+		c.build(k.look, "toddler" if age < 10 else "child")
+		var par: Chibi = people[String(k.parents[0])]
+		c.global_position = nav.nearest_free(par.get_meta("home_spot", par.global_position) + Vector3(0.5, 0, 0.4))
+		c.set_meta("npc", "")
+		npc_kid_nodes.append(c)
+
 ## Date: you and your date sit together on the park bench by the fountain.
 func seat_couple(id: String) -> void:
 	_couple = id
@@ -294,6 +377,7 @@ func seat_couple(id: String) -> void:
 	set_hour(Save.hour())
 
 func end_couple() -> void:
+	if _blanket: _blanket.visible = false
 	if _couple == "": return
 	var c: Chibi = people[_couple]
 	c.stand_up()

@@ -102,9 +102,11 @@ func _refresh_interacts() -> void:
 		var p := Vector3(it.x, 0, it.z)
 		match it.id:
 			"bed", "single_bed":
-				add_interact("bed", nav.nearest_free(p + Vector3(0.9, 0, 0)), 0.9, "Go to bed", _bed_menu)
+				add_interact("bed", nav.nearest_free(p + Vector3(0.9, 0, 0)), 1.1, "Go to bed", _bed_menu)
+				interacts.back().at = p + Vector3(0, 0.55, 0)
 			"wardrobe":
-				add_interact("wardrobe", nav.nearest_free(p + Vector3(0, 0, -0.6).rotated(Vector3.UP, it.rot * PI * 0.5)), 0.8, "Change your outfit", func(): game.hud.open_boutique(true))
+				add_interact("wardrobe", nav.nearest_free(p + Vector3(0, 0, -0.6).rotated(Vector3.UP, it.rot * PI * 0.5)), 0.9, "Change your outfit", func(): game.hud.open_boutique(true))
+				interacts.back().at = p + Vector3(0, 1.0, 0)
 			"tv":
 				add_interact("tv", nav.nearest_free(p + Vector3(0, 0, 0.9)), 0.8, "Watch TV (1 hour)", func():
 					game.life.skip_time(60.0)

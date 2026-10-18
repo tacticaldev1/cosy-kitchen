@@ -62,7 +62,7 @@ func run(t) -> void:
 	game.counter_tap(0)
 	var pan: PanStation = game.stations.pan
 	pan.on_btn()
-	game.sim(5.0)
+	game.sim(11.0)
 	pan.on_btn()
 	var f: Dictionary = game.counter[0]
 	t.check(f.recipe == pancakes.id and f.q == "perfect", "perfect Fluffy Pancakes come out of the pan")
@@ -103,7 +103,7 @@ func run(t) -> void:
 	micro.add_item(G.new_food("kernels"))
 	micro.press(4); micro.press(10)
 	micro.press(11)
-	game.sim(7.0)
+	game.sim(15.0)
 	t.check(game.counter.back().recipe >= 0 and G.RECIPES[game.counter.back().recipe].n == "Popcorn", "the microwave pops Popcorn")
 	# ---- pantry
 	game.counter.clear()
@@ -159,10 +159,26 @@ func run(t) -> void:
 	Save.r("hana").hearts = 4.5
 	Save.wallet = 50000
 	Save.minute = 900.0
-	game.life.date("hana")
-	t.check(game.loc == game.city and game.city._couple == "hana" and game.player.sitting, "a date: sitting on the park bench together")
-	game.life._date_answer("hana", 2, People.DATES.hana[0])
-	t.check(int(Save.r("hana").dates) == 1 and Save.hearts("hana") >= 6.0 and not game.player.sitting, "the best answer on a date: +1.5 hearts (%.1f)" % Save.hearts("hana"))
+	game.life.go_date("hana", "picnic")
+	t.check(game.loc == game.city and game.city._couple == "hana" and game.player.sitting and game.city._blanket.visible, "a picnic date: sitting on a blanket under the cherry trees")
+	for k in 2:
+		var q: Array = game.life._date_state.qs[game.life._date_state.i]
+		game.life._date_answer("hana", int(q[2]), q)
+	t.check(int(Save.r("hana").dates) == 1 and Save.hearts("hana") >= 6.5 and not game.player.sitting, "two great answers on Hana's favourite kind of date (%.1f hearts)" % Save.hearts("hana"))
+	# every kind of date stages its scene
+	var staged := []
+	for ty in People.DATE_TYPES:
+		Save.wallet = 50000
+		game.life.go_date("kai", ty)
+		var st_ok: bool = (game.city._couple == "kai" and game.player.sitting or game.city._couple == "kai") if game.loc == game.city else (game._date_guest != null and game._date_guest.visible)
+		if st_ok: staged.append(ty)
+		for k in 2:
+			var q: Array = game.life._date_state.qs[game.life._date_state.i]
+			game.life._date_answer("kai", 0, q)
+	t.check(staged.size() == People.DATE_TYPES.size() and game._date_guest == null, "all %d date types set their scene (%s)" % [People.DATE_TYPES.size(), ", ".join(staged)])
+	game.travel_now("city", "park")
+	Save.r("kai").hearts = 2.0
+	Save.r("kai").romance = false
 	game.life.ask_partner("hana")
 	t.check(Save.partner == "hana", "Hana says yes to being partners")
 	Save.has_ring = true
@@ -201,8 +217,10 @@ func run(t) -> void:
 		game.life.flirt("ren")
 	t.check(Save.hearts("ren") >= 5.0 and game.life.is_lover("ren") and game.life.cheating_with("ren"), "flirting while married: Ren becomes your secret sweetheart (%.1f)" % Save.hearts("ren"))
 	Save.r("ren").dated = -1
-	game.life.date("ren")
-	game.life._date_answer("ren", 1, People.DATES.ren[0])
+	game.life.go_date("ren", "books")
+	for k in 2:
+		var q: Array = game.life._date_state.qs[game.life._date_state.i]
+		game.life._date_answer("ren", 1, q)
 	t.check(int(Save.r("ren").dates) >= 1, "a secret date with Ren")
 	var dr_h0 := Save.hearts("hana")
 	game.life.caught("ren", "on a date with")
@@ -243,6 +261,44 @@ func run(t) -> void:
 		game.sim(1.2)
 	t.check(Save.family.kids.size() == dr_kids0 + 1 and Save.family.kids.back().get("parent", "") == "kai", "days later Kai arrives with your baby")
 	game.life.cheat("fertile")
+	# town drama: townsfolk pair up and have babies; your partner strays
+	game.life.cheat("matchmaker")
+	Save.flags.erase("couples")
+	var news: Array = game.life.drama_day()
+	game.life.cheat("matchmaker")
+	var couples: Array = Save.flags.get("couples", [])
+	t.check(couples.size() == 1 and news.size() >= 1, "two townsfolk fall for each other: %s" % (news[0][1] if news.size() else "nothing"))
+	couples[0][2] = Save.day - 10
+	game.life.rng.seed = 2
+	for i in 30:
+		game.life.drama_day()
+		if Save.flags.get("npc_babies", []).size() or Save.flags.get("npc_kids", []).size(): break
+	t.check(Save.flags.get("npc_babies", []).size() + Save.flags.get("npc_kids", []).size() >= 1, "a townsfolk couple has a baby on the way")
+	Save.day += 6
+	game.life.drama_day()
+	Save.day -= 6
+	t.check(Save.flags.get("npc_kids", []).size() >= 1, "…and the baby is born")
+	Save.partner = "yuki"
+	Save.r("yuki").hearts = 3.0
+	Save.flags.erase("affair")
+	game.life.cheat("drama")
+	game.life.drama_day()
+	t.check(Save.flags.get("affair", {}).size() > 0, "a neglected partner starts seeing someone else (%s)" % Save.flags.get("affair", {}).get("with", "?"))
+	Save.minute = 14 * 60.0
+	game.travel_now("city", "park")
+	game.life._check_affair()
+	var yn: Chibi = game.city.people.yuki
+	t.check(yn.visible and yn.global_position.distance_to(Vector3(-0.3, 0, 10.4)) < 0.1, "you can spot them together by the fountain in the afternoon")
+	game.life.spot_affair()
+	t.check(Save.flags.affair.seen, "spotting them triggers the scene")
+	Save.flags.affair.day = Save.day - 5
+	game.life.drama_day()
+	game.life.cheat("drama")
+	t.check(Save.flags.get("affair_baby_reveal", false), "…and later there's going to be a baby")
+	game.life.break_up(true)
+	game.city.affair_scene(false)
+	Save.flags.erase("affair")
+	Save.flags.erase("affair_baby_reveal")
 	# sneaking into Yuki's house
 	game.hud.close_all()
 	Save.minute = 23.5 * 60.0

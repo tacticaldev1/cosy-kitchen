@@ -86,7 +86,7 @@ func on_items_changed() -> void:
 
 func step(dt: float) -> void:
 	if hold:
-		p += dt * 0.34
+		p += dt * 0.2
 		if snd: snd.set_param(clampf(p, 0.0, 1.0))
 		if p >= 1.0:
 			finish()

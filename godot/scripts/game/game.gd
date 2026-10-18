@@ -278,31 +278,84 @@ func _read_move_keys() -> void:
 	player.frozen = cutscene or open_key != ""
 
 # ---------------------------------------------------------------- what's near you
+## Everything you could interact with from here, best first: closer things and things in
+## front of you win. Tab cycles through them; an arrow floats over the chosen one.
+func focus_candidates() -> Array:
+	var out: Array = []
+	if open_key != "" or cutscene or loc == null or edit.active: return out
+	var p := player.global_position
+	var fwd := Vector3(sin(player.rotation.y), 0, cos(player.rotation.y))
+	var score := func(target: Vector3, d: float) -> float:
+		var to := Vector3(target.x - p.x, 0, target.z - p.z)
+		var facing := fwd.dot(to.normalized()) if to.length() > 0.05 else 1.0
+		return d - 0.35 * maxf(0.0, facing)
+	if loc == cafe:
+		for c in shop.customers:
+			if c.state != "wait" and c.state != "order" and c.state != "eat": continue
+			var d := Vector2(p.x, p.z).distance_to(Vector2(c.global_position.x, c.global_position.z))
+			# seated customers can also be reached from the spot beside their chair
+			var app: Vector3 = c.get_meta("approach", c.global_position)
+			d = minf(d, Vector2(p.x, p.z).distance_to(Vector2(app.x, app.z)) + 0.15)
+			if d < 1.1: out.append({"kind": "cust", "c": c, "label": _cust_label(c), "s": score.call(c.global_position, d), "at": c.head_pos() + Vector3(0, 0.45, 0)})
+	for n in loc.npcs:
+		if not is_instance_valid(n) or not n.visible: continue
+		var d := Vector2(p.x, p.z).distance_to(Vector2(n.global_position.x, n.global_position.z))
+		if d < 1.1: out.append({"kind": "npc", "n": n, "label": "Talk to " + String(n.get_meta("label", "them")), "s": score.call(n.global_position, d) - 0.05, "at": n.global_position + Vector3(0, 1.0 * n.scale.y, 0)})
+	for it in loc.interacts:
+		var d := Vector2(p.x, p.z).distance_to(Vector2(it.pos.x, it.pos.z))
+		if d < float(it.r):
+			var obj: Vector3 = it.get("at", it.pos)
+			out.append({"kind": "it", "it": it, "label": it.label, "s": score.call(obj, d) + 0.1, "at": obj + Vector3(0, 0.35, 0) if it.has("at") else it.pos + Vector3(0, float(it.get("h", 0.9)) + 0.25, 0)})
+	out.sort_custom(func(a, b): return a.s < b.s)
+	return out
+
+var _focus_pick := 0
+var _focus_key := ""
+var focus_arrow: Label3D
+
 func _update_focus() -> void:
-	var f := {}
-	if open_key == "" and not cutscene and loc and not edit.active:
-		var p := player.global_position
-		var best := 1.0
-		if loc == cafe:
-			for c in shop.customers:
-				if c.state != "wait" and c.state != "order" and c.state != "eat": continue
-				var d := Vector2(p.x, p.z).distance_to(Vector2(c.global_position.x, c.global_position.z))
-				# seated customers can also be reached from the spot beside their chair
-				var app: Vector3 = c.get_meta("approach", c.global_position)
-				d = minf(d, Vector2(p.x, p.z).distance_to(Vector2(app.x, app.z)) + 0.15)
-				if d < best:
-					best = d
-					f = {"kind": "cust", "c": c, "label": _cust_label(c)}
-		for n in loc.npcs:
-			if not is_instance_valid(n) or not n.visible: continue
-			var d := Vector2(p.x, p.z).distance_to(Vector2(n.global_position.x, n.global_position.z))
-			if d < best:
-				best = d
-				f = {"kind": "npc", "n": n, "label": "Talk to " + String(n.get_meta("label", "them"))}
-		if f.is_empty():
-			var it := loc.nearest_interact(p)
-			if it.size(): f = {"kind": "it", "it": it, "label": it.label}
-	focus = f
+	var cands := focus_candidates()
+	var keys := cands.map(_focus_id)
+	var k := ",".join(keys)
+	if k != _focus_key:
+		_focus_key = k
+		_focus_pick = 0
+	focus = cands[_focus_pick % cands.size()] if cands.size() else {}
+	focus["more"] = cands.size() > 1
+	if cands.is_empty(): focus = {}
+	_update_arrow()
+
+func _focus_id(f: Dictionary) -> String:
+	match f.kind:
+		"cust": return "c%d" % f.c.cid
+		"npc": return "n%d" % f.n.get_instance_id()
+	return "i" + String(f.it.id)
+
+## Tab: aim at the next thing nearby (the stove has a pot, a pan and an oven side by side).
+func cycle_focus() -> void:
+	_focus_pick += 1
+	_update_focus()
+	Sfx.play("tick", 0.6)
+
+func _update_arrow() -> void:
+	if focus_arrow == null:
+		focus_arrow = Label3D.new()
+		focus_arrow.text = "▼"
+		focus_arrow.font = load("res://assets/fonts/MochiyPopOne-Regular.ttf")
+		focus_arrow.font_size = 72
+		focus_arrow.pixel_size = 0.003
+		focus_arrow.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		focus_arrow.no_depth_test = true
+		focus_arrow.modulate = Color("FF7EA6")
+		focus_arrow.outline_modulate = Color.WHITE
+		focus_arrow.outline_size = 14
+		focus_arrow.render_priority = 9
+		add_child(focus_arrow)
+	focus_arrow.visible = focus.size() > 0 and not paused()
+	if focus_arrow.visible:
+		var at: Vector3 = focus.at
+		focus_arrow.global_position = at + Vector3(0, 0.06 * sin(clock * 5.0), 0)
+		focus_arrow.pixel_size = 0.003 if loc != city else 0.005
 
 func _cust_label(c: Customer) -> String:
 	match c.state:
@@ -393,7 +446,8 @@ func _key(e: InputEventKey) -> void:
 			if carrying.size(): eat_carried()
 		KEY_ESCAPE, KEY_TAB:
 			if open_key != "": leave_station()
-			elif e.keycode == KEY_ESCAPE: hud.open_settings()
+			elif e.keycode == KEY_TAB: cycle_focus()
+			else: hud.open_settings()
 		KEY_RIGHT, KEY_LEFT:
 			if open_key != "":
 				var i := ORDER.find(open_key)
@@ -859,18 +913,54 @@ func open_shop_ui(id: String) -> void:
 	hud.open_shop(id)
 
 ## A date: you meet at the park fountain in the evening and sit on a bench together.
-func start_date(id: String, then: Callable) -> void:
+## A date: you both go to the place (park bench, picnic blanket, fountain, a shop front, your
+## café or your home) and the scene is set before the conversation starts.
+var _date_guest: Chibi
+
+func start_date(id: String, type: String, then: Callable) -> void:
+	var spot: String = People.DATE_TYPES.get(type, {"spot": "bench"}).spot
 	cutscene = true
-	hud.fade(func():
-		Save.minute = maxf(Save.minute, 18.5 * 60.0)
-		travel_now("city", "park")
-		city.seat_couple(id), func():
+	hud.fade(func(): _stage_date(id, spot), func():
 		cutscene = false
 		then.call())
 
+func _stage_date(id: String, spot: String) -> void:
+	match spot:
+		"cafe":
+			travel_now("cafe", "door")
+			_seat_guest(id, cafe.furni.seats().filter(func(st): return st.id in ["table2", "table4", "booth"]))
+		"home":
+			travel_now("home", "start")
+			_seat_guest(id, home.furni.seats())
+		_:
+			travel_now("city", "park" if spot in ["bench", "picnic", "fountain"] else spot)
+			city.stage_couple(id, spot)
+
+func _seat_guest(id: String, seat_list: Array) -> void:
+	_date_guest = loc.make_person(id, People.look_of(id), People.npc_name(id))
+	_date_guest.set_meta("date_guest", true)
+	# two seats close together (same table / sofa), else stand face to face
+	for a in seat_list:
+		for b in seat_list:
+			if a != b and a.pos.distance_to(b.pos) < 1.3:
+				_date_guest.sit_at(a.pos, a.yaw, a.h)
+				player.sit_at(b.pos, b.yaw, b.h)
+				_date_guest.feel("happy", 30.0)
+				return
+	# no sofa or table: sit together on the floor (or the rug)
+	var c := loc.nav.nearest_free(Vector3(0.2, 0, 0.5))
+	_date_guest.sit_at(c + Vector3(0.3, 0, 0), -PI * 0.5 + 0.4, 0.06)
+	player.sit_at(c - Vector3(0.3, 0, 0), PI * 0.5 - 0.4, 0.06)
+	_date_guest.feel("happy", 30.0)
+
 func end_date() -> void:
 	city.end_couple()
+	if _date_guest and is_instance_valid(_date_guest):
+		loc.npcs.erase(_date_guest)
+		_date_guest.queue_free()
+	_date_guest = null
 	player.stand_up()
+	if loc.nav: player.global_position = loc.nav.nearest_free(player.global_position)
 
 func start_wedding(then: Callable) -> void:
 	cutscene = true
@@ -954,7 +1044,7 @@ func _dev_setup(what: String) -> void:
 			sim(1.0)
 		"date":
 			Save.r("hana").hearts = 5.0
-			start_date("hana", func(): pass)
+			start_date("hana", Shot.arg("type", "picnic"), func(): pass)
 		"cafe":
 			travel_now("cafe", "door")
 			player.global_position = Vector3(0.6, 0, 0.6)
@@ -1035,7 +1125,8 @@ func _dev_setup(what: String) -> void:
 			looks[4].bottom = "dress"
 			if parts.size() > 1 and parts[1] == "hair":
 				looks = []
-				for st in Chibi.STYLES:
+				var only := Chibi.STYLES.slice(18) if Shot.arg("new") != "" else Chibi.STYLES
+				for st in only:
 					var lk := Chibi.random_look(null, "m" if st in Chibi.M_STYLES and not st in Chibi.F_STYLES else "f")
 					lk.style = st
 					looks.append(lk)
@@ -1094,10 +1185,10 @@ func _dev_setup(what: String) -> void:
 					stations.plate.add_item(f)
 				if w == "pan" or w == "pot" or w == "oven":
 					stations[w].start()
-					sim(4.0 if w != "oven" else 6.0)
+					sim(9.0 if w != "oven" else 14.0)
 				if w == "micro":
 					stations.micro.on_btn()
-					sim(2.5)
+					sim(5.0)
 				for k in ["egg", "tomato", "strawberry"]:
 					counter.append(G.new_food(k))
 				hud.counter_changed()
