@@ -18,7 +18,7 @@ var _ok := false
 
 func start() -> bool:
 	var l := game.loc
-	if l == null or l.furni == null:
+	if l == null or l.furni == null or not l.editable:
 		game.toast("You can only decorate your café and your home")
 		return false
 	if l == game.cafe and game.shop.open:

@@ -109,7 +109,21 @@ func morning() -> void:
 		if Save.day >= due:
 			game.after(0.8, birth)
 		else:
-			lines.append(["", "%s rests a hand on the bump and smiles. The baby is due in %d day%s." % [partner_name(), due - Save.day, "" if due - Save.day == 1 else "s"]])
+			lines.append(["", "The baby is due in %d day%s. Little socks are piling up by the door." % [due - Save.day, "" if due - Save.day == 1 else "s"]])
+	# a baby from a fling
+	var others: Array = fam.get("others", [])
+	for o in others.duplicate():
+		if Save.day >= int(o.due):
+			others.erase(o)
+			game.after(1.0, func(): surprise_baby(o))
+			break
+	# word gets around: your spouse hears at breakfast
+	if Save.married and Save.flags.has("gossip"):
+		var gs: Dictionary = Save.flags.gossip
+		game.after(1.4, func(): caught(String(gs.lover), String(gs.what)))
+	if Save.flags.get("sneaked", false):
+		Save.flags.erase("sneaked")
+		lines.append(["", "The Hoshizora Times: \"Mysterious intruder spotted in town. Neighbours lock their doors.\""])
 	for k in fam.kids:
 		var age: int = Save.day - int(k.born)
 		if age == 4: lines.append(["", "%s took their first wobbly steps today!" % k.name])
@@ -154,14 +168,34 @@ func talk(id: String) -> void:
 		_talk_keeper(id)
 		return
 	var d := Save.r(id)
-	var nm := People.npc_name(id)
+	# your partner heard something…
+	if Save.partner == id and Save.flags.has("gossip"):
+		var gs: Dictionary = Save.flags.gossip
+		caught(String(gs.lover), String(gs.what))
+		return
+	# a friend heard what you said behind their back
+	if String(d.get("heard_from", "")) != "":
+		var who: String = d.heard_from
+		d.erase("heard_from")
+		Save.add_hearts(id, -1.5)
+		game.npc_react(id, "yuck")
+		game.hud.say([[id, "%s told me what you said about me. I thought we were friends." % People.npc_name(who)]])
+		Save.save()
+		return
 	var opts: Array = []
 	opts.append(["Chat", func(): chat(id)])
+	if Save.hearts(id) >= 3.0 and int(d.get("flirted", -1)) != Save.day: opts.append(["Flirt ♥", func(): flirt(id)])
 	if Save.gifts.size(): opts.append(["Give a gift", func(): game.hud.pick_gift(id)])
 	if Save.partner == "" and Save.hearts(id) >= 4.0 and int(d.get("dated", -1)) != Save.day:
 		opts.append(["Ask on a date (¥1,500)", func(): date(id)])
 	elif Save.partner == id and int(d.get("dated", -1)) != Save.day and not is_night():
 		opts.append(["Go on a date (¥1,500)", func(): date(id)])
+	elif Save.partner != "" and Save.hearts(id) >= 4.0 and int(d.get("dated", -1)) != Save.day and not is_night():
+		opts.append(["Secret date ♥ (¥1,500)", func(): date(id)])
+	if game.loc is NpcHomeLocation and (game.loc as NpcHomeLocation).host == id and Save.minute >= 20 * 60.0 and Save.hearts(id) >= 7.0 and (is_lover(id) or Save.partner == id):
+		opts.append(["Stay the night ♥", func(): stay_night(id)])
+	if Save.hearts(id) >= 2.0: opts.append(["Gossip about someone…", func(): gossip_menu(id)])
+	if Save.partner == id and not Save.married: opts.append(["Break up", func(): confirm_break_up()])
 	if Save.partner == "" and Save.hearts(id) >= 6.0 and int(d.dates) >= 1:
 		opts.append(["Ask to be your partner ♥", func(): ask_partner(id)])
 	if Save.partner == id and not Save.married and not Save.flags.get("wedding", false) and Save.has_ring:
@@ -173,6 +207,9 @@ func talk(id: String) -> void:
 func _status(id: String) -> String:
 	if Save.married and Save.partner == id: return "your spouse"
 	if Save.partner == id: return "your partner"
+	if cheating_with(id): return "your secret ♥"
+	if is_lover(id): return "sweetheart"
+	if Save.r(id).get("ex", false): return "your ex"
 	var h := Save.hearts(id)
 	return "stranger" if h < 1.0 else "acquaintance" if h < 3.0 else "friend" if h < 6.0 else "close friend"
 
@@ -222,6 +259,8 @@ func date(id: String) -> void:
 func _date_answer(id: String, i: int, q: Array) -> void:
 	var d := Save.r(id)
 	d.dates = int(d.dates) + 1
+	d.romance = true
+	if Save.partner != "" and Save.partner != id: _risk(id, 0.3, "on a date with")
 	var best: bool = i == int(q[2])
 	Save.add_hearts(id, 1.5 if best else 0.8)
 	skip_time(120.0)
@@ -273,29 +312,31 @@ func start_family() -> void:
 		game.cutscene = true
 		game.family_scene(func():
 			Save.family.expecting = Save.day + 4
+			Save.family.expecting_with = Save.partner
 			game.cutscene = false
 			new_day()
 			game.travel_now("home", "bed")
 			game.hud.say([["", "The next morning…"], ["", "A few weeks later, the doctor smiles: you're expecting a baby! ♥ (due in 3 days)"]], func(): morning())))
 
 func birth() -> void:
-	var look := _kid_look()
+	var parent: String = Save.family.get("expecting_with", Save.partner)
+	var look := _kid_look(parent)
 	var girl: bool = look.body == "f"
 	var names: Array = ["Hina", "Mio", "Sakura", "Yui", "Aoi", "Momo"] if girl else ["Sora", "Haru", "Riku", "Ren", "Taichi", "Kota"]
 	game.hud.say([["", "Today's the day! After a long, long night at Hoshizora Clinic…"], ["", "It's a %s! A healthy, beautiful baby %s. ♥" % ["girl" if girl else "boy", "girl" if girl else "boy"]]], func():
 		game.hud.ask_text("What will you name your baby %s?" % ("girl" if girl else "boy"), names[rng.randi() % names.size()], func(nm: String):
-			Save.family.kids.append({"name": nm, "born": Save.day, "look": look})
+			Save.family.kids.append({"name": nm, "born": Save.day, "look": look, "parent": parent})
 			Save.family.expecting = -1
 			flag("baby")
 			Save.save()
 			Sfx.play("yay")
 			game.home.refresh_family()
 			var crib := Story._home_has("crib")
-			game.hud.say([[Save.partner, "Welcome to the world, little %s." % nm], ["", "You're a parent now!" + ("" if crib else " Don't forget to put a crib in the apartment.")]])))
+			game.hud.say([[parent if parent != "" else "", "Welcome to the world, little %s." % nm], ["", "You're a parent now!" + ("" if crib else " Don't forget to put a crib in the apartment.")]])))
 
-func _kid_look() -> Dictionary:
+func _kid_look(parent := "") -> Dictionary:
 	var a: Dictionary = Save.player_look
-	var b: Dictionary = People.look_of(Save.partner)
+	var b: Dictionary = People.look_of(parent if parent != "" else Save.partner)
 	var lk := Chibi.random_look(rng)
 	lk.skin = a.get("skin", "FFE2D2") if rng.randf() < 0.5 else b.get("skin", "FFE2D2")
 	lk.hair = a.get("hair", "4B2E5A") if rng.randf() < 0.5 else b.get("hair", "4B2E5A")
@@ -320,6 +361,7 @@ func talk_family(id: String) -> void:
 			else:
 				opts.append(["Talk about starting a family ♥", func(): game.hud.say([[Save.partner, "We'd need a proper double bed first, love. The single bed is cosy, but…"]])])
 		if Save.gifts.size(): opts.append(["Give a gift", func(): game.hud.pick_gift(Save.partner)])
+		opts.append(["Ask for a divorce", func(): confirm_break_up()])
 		opts.append(["Bye!", func(): pass])
 		game.hud.ask(Save.partner, "%s  ·  your %s" % [partner_name(), "spouse" if Save.married else "partner"], opts)
 		return
@@ -350,6 +392,254 @@ func _talk_keeper(id: String) -> void:
 		_:
 			game.open_shop_ui(id)
 
+# ---------------------------------------------------------------- romance, secrets and drama
+## Townsfolk are at home from 9pm until 7am (your spouse lives with you instead).
+static func npc_home(id: String) -> bool:
+	var h := Save.hour()
+	return not (Save.married and Save.partner == id) and (h >= 21.0 or h < 7.0)
+
+static func npc_asleep(id: String) -> bool:
+	var h := Save.hour()
+	return npc_home(id) and (h >= 23.0 or h < 6.5)
+
+func is_lover(id: String) -> bool:
+	return bool(Save.r(id).get("romance", false))
+
+## Seeing someone behind your partner's back.
+func cheating_with(id: String) -> bool:
+	return Save.partner != "" and Save.partner != id and is_lover(id)
+
+func flirt(id: String) -> void:
+	var d := Save.r(id)
+	d.flirted = Save.day
+	var h := Save.hearts(id)
+	var ok := h >= 3.0 and rng.randf() < 0.6 + h * 0.06
+	if ok:
+		Save.add_hearts(id, 0.7 if Save.partner != id else 0.4)
+		if Save.hearts(id) >= 5.0: d.romance = true
+		game.hearts_fx(id)
+		game.npc_react(id, "wow")
+	else:
+		game.npc_react(id, "focus")
+	var yes := {"hana": ["*giggles* You're such a charmer.", "Stop it, you'll make me blush… don't stop."], "ren": ["…You can't just say things like that. (He's smiling.)", "I'll be thinking about that all day."],
+		"kai": ["Whoa, smooth! Say it again!", "Ha! You trying to make my heart race? It's working."], "yuki": ["Oh… you're blushing too, you know.", "That's the nicest colour anyone's ever called me."]}
+	var no := {"hana": "Hehe, let's just be friends for now, okay?", "ren": "…Um. I should get back to my books.", "kai": "Ha, nice try, chef!", "yuki": "That's sweet, but my heart's on my canvas today."}
+	var line: String = yes[id][rng.randi() % 2] if ok else no[id]
+	game.hud.say([[id, line]])
+	if ok and Save.partner != "" and Save.partner != id: _risk(id, 0.18, "flirting with")
+	Save.save()
+
+## Gossip with someone about a mutual friend: they like you a little more… unless it gets back.
+func gossip_menu(id: String) -> void:
+	var opts: Array = []
+	for k in People.NPCS:
+		if k == id: continue
+		var kk: String = k
+		opts.append([People.npc_name(k), func(): gossip(id, kk)])
+	opts.append(["Never mind", func(): pass])
+	game.hud.ask(id, "Ooh, gossip? Who about?", opts)
+
+func gossip(listener: String, target: String) -> void:
+	var d := Save.r(listener)
+	if int(d.get("gossiped", -1)) == Save.day:
+		game.hud.say([[listener, "We already gossiped today! My ears need a rest."]])
+		return
+	d.gossiped = Save.day
+	Save.add_hearts(listener, 0.4)
+	var tn := People.npc_name(target)
+	var juicy := ["%s still sleeps with a night-light, you know." % tn, "Between us? %s burnt toast three times last week." % tn,
+		"I heard %s practises speeches to the mirror." % tn, "%s has a secret stash of sweets behind the counter." % tn]
+	if rng.randf() < 0.45 and not cheat_on("nogossip"): Save.r(target).heard_from = listener
+	game.hud.say([["me", juicy[rng.randi() % juicy.size()]], [listener, "No way! Hehe, my lips are sealed."]])
+	Save.save()
+
+## The chance your partner hears about it. Right in front of them, they find out immediately.
+func _risk(lover: String, p: float, what: String) -> void:
+	if cheat_on("nogossip") or Save.partner == "" or Save.partner == lover: return
+	var pn := game.npc_node(Save.partner)
+	var seen := pn != null and pn.visible and pn.global_position.distance_to(game.player.global_position) < 10.0
+	if seen:
+		game.after(0.6, func(): caught(lover, what))
+	elif rng.randf() < p:
+		Save.flags["gossip"] = {"lover": lover, "what": what, "day": Save.day}
+
+## Your partner confronts you.
+func caught(lover: String, what: String) -> void:
+	var pid := Save.partner
+	if pid == "": return
+	Save.flags.erase("gossip")
+	var d := Save.r(pid)
+	d.cheated = int(d.get("cheated", 0)) + 1
+	game.npc_react(pid, "yuck")
+	for k in People.NPCS:
+		if k != pid and k != lover: Save.add_hearts(k, -0.3)   # the whole town talks
+	Save.reputation = clampf(Save.reputation - 0.1, 0.0, 5.0)
+	var lines := {"hana": "I heard you were %s %s. Tell me it isn't true…", "ren": "People are saying you were %s %s. I… need to hear it from you.",
+		"kai": "Everybody at the market says you were %s %s! Is it true?!", "yuki": "Someone saw you %s %s. My heart feels grey."}
+	var line: String = lines[pid] % [what, People.npc_name(lover)]
+	game.hud.say([[pid, line]], func():
+		game.hud.ask(pid, "Well?", [
+			["I'm so sorry. It won't happen again.", func(): _after_caught(pid, lover, -3.0, true)],
+			["It meant nothing!", func(): _after_caught(pid, lover, -4.0, false)],
+			["Maybe we should split up.", func(): break_up(true)]]))
+	Save.save()
+
+func _after_caught(pid: String, lover: String, loss: float, sorry: bool) -> void:
+	var times := int(Save.r(pid).get("cheated", 1))
+	Save.add_hearts(pid, loss - 1.5 * (times - 1))
+	Save.r(lover).romance = false
+	if not sorry: Save.add_hearts(lover, -1.5)
+	if Save.hearts(pid) < 2.0 or times >= 3:
+		game.hud.say([[pid, "I can't keep doing this. I'm sorry… we're over."]], func(): break_up(false))
+	else:
+		game.hud.say([[pid, "…Okay. I'll try to trust you again. Don't make me regret it."]])
+	Save.save()
+
+func confirm_break_up() -> void:
+	var pid := Save.partner
+	game.hud.ask("", "Really end things with %s?%s" % [People.npc_name(pid), " (This means a divorce.)" if Save.married else ""],
+		[["Yes, it's over", func(): break_up(true)], ["No, I love them", func(): pass]])
+
+## Breaking up (or a divorce). Your ex moves out; the kids stay with you.
+func break_up(you_ended_it: bool) -> void:
+	var pid := Save.partner
+	if pid == "": return
+	var was_married := Save.married
+	Save.partner = ""
+	Save.married = false
+	Save.has_ring = false
+	Save.flags.erase("gossip")
+	Save.flags.erase("wedding")
+	var d := Save.r(pid)
+	d.romance = false
+	d.ex = true
+	Save.add_hearts(pid, -4.0 if you_ended_it else -2.0)
+	game.home.refresh_family()
+	Sfx.play("sigh" if Sfx.has("sigh") else "pop")
+	var bye := ("The divorce papers are signed. %s packs a bag and moves out. The apartment feels very quiet." if was_married else "You and %s go your separate ways.") % People.npc_name(pid)
+	game.hud.say([["", bye]])
+	Save.save()
+
+## A night at your sweetheart's place. Tasteful: the lights go down and the screen fades to black.
+func stay_night(id: String) -> void:
+	game.hud.say([[id, "Stay… I don't want tonight to end."]], func():
+		game.cutscene = true
+		game.family_scene(func():
+			if game.shop.open: game.shop.close_day(true)
+			new_day()
+			game.cutscene = false
+			var d := Save.r(id)
+			d.nights = int(d.get("nights", 0)) + 1
+			d.romance = true
+			Save.add_hearts(id, 1.0)
+			var pending: Array = Save.family.get("others", [])
+			if Save.family.kids.size() + pending.size() < MAX_KIDS and not pending.any(func(o): return o.with == id) and (rng.randf() < 0.35 or cheat_on("fertile")):
+				pending.append({"with": id, "due": Save.day + 5})
+				Save.family.others = pending
+			game.player.global_position = game.loc.nav.nearest_free(Vector3(-1.2, 0, 1.2))
+			if game.loc is NpcHomeLocation: (game.loc as NpcHomeLocation).set_hour(Save.hour())
+			if Save.partner != "" and Save.partner != id: _risk(id, 0.5, "spending the night with")
+			game.hud.say([["", "The next morning…"], [id, "Good morning, sleepyhead. I made tea."]], func(): morning())))
+
+## Someone you had a fling with turns up with your baby.
+func surprise_baby(o: Dictionary) -> void:
+	var id: String = o.with
+	var look := _kid_look(id)
+	var girl: bool = look.body == "f"
+	var kind := "girl" if girl else "boy"
+	var names: Array = ["Hina", "Mio", "Sakura", "Yui"] if girl else ["Sora", "Haru", "Riku", "Kota"]
+	game.hud.say([["", "There's a knock at the door. It's %s, holding a tiny bundle." % People.npc_name(id)],
+		[id, "I didn't know how to tell you… This is our baby %s. I want them to know you." % kind]], func():
+		game.hud.ask_text("What will you name your baby %s?" % kind, names[rng.randi() % names.size()], func(nm: String):
+			Save.family.kids.append({"name": nm, "born": Save.day, "look": look, "parent": id})
+			Save.add_hearts(id, 1.0)
+			game.home.refresh_family()
+			Save.save()
+			if Save.partner != "" and Save.partner != id:
+				game.hud.say([["", "%s comes to live with you. %s looks at the baby… and knows." % [nm, People.npc_name(Save.partner)]]], func(): caught(id, "having a baby with"))
+			else:
+				game.hud.say([["", "%s comes to live with you. You're a parent!" % nm]])))
+
+# ---------------------------------------------------------------- other people's houses
+func visit_house(id: String) -> void:
+	var nm := People.npc_name(id)
+	if Save.married and Save.partner == id:
+		game.hud.say([["", "%s lives with you now. This cottage is empty." % nm]])
+		return
+	var opts: Array = []
+	var text := ""
+	if not npc_home(id):
+		text = "%s's house. Nobody's home right now." % nm
+	elif npc_asleep(id):
+		text = "%s's house. The lights are off… they must be asleep." % nm
+	else:
+		text = "%s's house. You can hear humming inside." % nm
+		opts.append(["Knock", func(): knock(id)])
+	opts.append(["Sneak in…", func(): sneak(id)])
+	opts.append(["Leave", func(): pass])
+	game.hud.ask("", text, opts)
+
+func knock(id: String) -> void:
+	if Save.hearts(id) >= 3.0 or is_lover(id) or Save.partner == id:
+		game.hud.say([[id, "Oh! Come in, come in!"]], func(): game.enter_house(id, false))
+	else:
+		game.hud.say([[id, "Um… it's a bit late. See you around town tomorrow?"]])
+
+func sneak(id: String) -> void:
+	var chance := 0.0
+	if not cheat_on("sneaky"):
+		chance = 0.6 if npc_home(id) and not npc_asleep(id) else 0.2 if npc_asleep(id) else 0.08
+	game.enter_house(id, true)
+	if rng.randf() < chance:
+		game.after(0.8, func(): caught_sneaking(id))
+	else:
+		game.toast("You slip inside without a sound…")
+
+func snoop(id: String) -> void:
+	if not game.sneaking and npc_home(id) and not npc_asleep(id):
+		Save.add_hearts(id, -0.5)
+		game.npc_react(id, "yuck")
+		game.hud.say([[id, "Um… are you going through my things?!"]])
+		return
+	var d := Save.r(id)
+	if int(d.get("snooped", -1)) == Save.day:
+		game.toast("You've already looked everywhere today")
+		return
+	d.snooped = Save.day
+	var chance := 0.0 if cheat_on("sneaky") else (0.3 if npc_home(id) and not npc_asleep(id) else 0.15 if npc_asleep(id) else 0.05)
+	if rng.randf() < chance:
+		caught_sneaking(id)
+		return
+	var nm := People.npc_name(id)
+	var roll := rng.randf()
+	var line := ""
+	if roll < 0.35:
+		d.known = true
+		line = "You find a wish list in a drawer: %s would love %s." % [nm, " and ".join(People.NPCS[id].loves.map(People.gift_name))]
+	elif roll < 0.6:
+		var entry := ("I think I'm falling for %s…" % Save.player_name) if Save.hearts(id) >= 5.0 else "Busy day. The café chef seems nice."
+		line = "You peek at %s's diary: \"%s\"" % [nm, entry]
+	elif roll < 0.8:
+		var y := 200 + rng.randi() % 600
+		Save.wallet += y
+		line = "There's %s in a jar marked 'rainy day'. You pocket it… sneaky." % G.yen(y)
+	else:
+		line = "Just socks. So many socks."
+	game.hud.say([["", line]])
+	Save.save()
+
+func caught_sneaking(id: String) -> void:
+	Save.add_hearts(id, -3.0)
+	for k in People.NPCS:
+		if k != id: Save.add_hearts(k, -0.3)
+	Save.reputation = clampf(Save.reputation - 0.15, 0.0, 5.0)
+	Save.flags["sneaked"] = true
+	game.npc_react(id, "yuck")
+	var lines := {"hana": "Eek! What are you doing in my house?! Get out!", "ren": "…Why are you in my house. Please leave. Now.",
+		"kai": "HEY! Who's there?! …You?! Out, out, OUT!", "yuki": "You… came in without asking? I need you to go."}
+	game.hud.say([[id, lines[id]], ["", "Word of this will be all over town by morning."]], func(): game.leave_house())
+	Save.save()
+
 # ---------------------------------------------------------------- cheats
 ## Every cheat: code -> [label, category, description, toggle?]. Toggles stay on until switched off.
 const CHEATS := {
@@ -379,6 +669,10 @@ const CHEATS := {
 	"quickwedding": ["Instant wedding", "Love", "Marry your partner right now", false],
 	"storkdelivery": ["Baby now", "Love", "A baby arrives (if married)", false],
 	"growup": ["Kids grow up", "Love", "Your kids age by a week", false],
+	"sneaky": ["Silent steps", "Love", "Never get caught sneaking or snooping", true],
+	"nogossip": ["Tight lips", "Love", "Nobody ever gossips about your secrets", true],
+	"forgiveme": ["Forgiven", "Love", "Your partner forgives everything", false],
+	"fertile": ["Baby fever", "Love", "Every night together brings a baby", true],
 	"freedecor": ["All furniture", "Stuff", "One of every furniture item in storage", false],
 	"nextchapter": ["Next chapter", "Stuff", "Skip to the next story chapter", false],
 }
@@ -441,6 +735,12 @@ func cheat(code: String) -> String:
 				Save.family.expecting = Save.day
 				game.after(0.3, birth)
 				msg = "The stork is on its way!"
+			"forgiveme":
+				if Save.partner == "": return "You don't have a partner"
+				Save.flags.erase("gossip")
+				Save.r(Save.partner).cheated = 0
+				Save.add_hearts(Save.partner, 10.0)
+				msg = "All is forgiven ♥"
 			"growup":
 				if Save.family.kids.is_empty(): return "No kids yet"
 				for k in Save.family.kids: k.born = int(k.born) - 7

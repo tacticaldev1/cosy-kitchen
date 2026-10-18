@@ -32,8 +32,8 @@ func setup(g: Game) -> void:
 	room.load_glb("res://assets/models/city.glb")
 	cam_offset = Vector3(0, 7.2, 9.6)
 	cam_look = Vector3(0, 0.9, -1.4)
-	cam_bounds = Rect2(-22.0, -1.6, 44.0, 11.6)
-	make_nav(Rect2(-28.0, -4.15, 56.0, 17.6), 0.2)
+	cam_bounds = Rect2(-37.0, -1.6, 74.0, 11.6)
+	make_nav(Rect2(-42.0, -4.15, 84.0, 17.6), 0.2)
 	_build_env()
 	_build_signs()
 	_build_people()
@@ -173,10 +173,26 @@ func _build_people() -> void:
 	walkers.append(cat)
 
 func _random_spot() -> Vector3:
-	var p := Vector3(rng.randf_range(-25, 25), 0, [-3.0, -2.6, 2.7, 3.0][rng.randi() % 4]) if rng.randf() < 0.7 else Vector3(rng.randf_range(-8, 8), 0, rng.randf_range(5, 12))
+	var p := Vector3(rng.randf_range(-38, 38), 0, [-3.0, -2.6, 2.7, 3.0][rng.randi() % 4]) if rng.randf() < 0.7 else Vector3(rng.randf_range(-8, 8), 0, rng.randf_range(5, 12))
 	return nav.nearest_free(p)
 
 func _build_interacts() -> void:
+	var font: Font = load("res://assets/fonts/MochiyPopOne-Regular.ttf")
+	for id in People.NPCS:
+		var hid: String = id
+		if not room.has_mark("door_house_" + id): continue
+		add_interact("house_" + id, room.mark("door_house_" + id), 0.95, "%s's house" % People.npc_name(id), func(): game.visit_house(hid))
+		interacts.back().h = 2.2
+		var l := Label3D.new()
+		l.text = "%s's" % People.npc_name(id)
+		l.font = font
+		l.font_size = 56
+		l.pixel_size = 0.0035
+		l.modulate = Color("FFFDF6")
+		l.outline_modulate = Color("3B2340")
+		l.outline_size = 14
+		add_child(l)
+		l.global_position = room.mark("sign_house_" + id) + Vector3(0, 0, 0.03)
 	for s in SHOPS:
 		if not room.has_mark("door_" + s): continue
 		var sid: String = s

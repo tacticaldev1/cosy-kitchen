@@ -248,7 +248,10 @@ func day_one() -> void:
 	t.check(travel("door_cafe", "cafe"), "walk down the street and into the café")
 	use("sign")
 	t.check(not game.shop.open, "the café can't open before 8:00 am (%s)" % Save.time_text())
-	while Save.minute < 8 * 60.0 + 1.0: step(1.0)
+	for i in 200:
+		if Save.minute >= 8 * 60.0 + 1.0: break
+		game.hud.close_all()
+		step(1.0)
 	use("sign")
 	game.hud.close_all()
 	t.check(game.shop.open, "flip the OPEN sign at 8:00 am")
@@ -455,6 +458,37 @@ func love_and_family() -> void:
 	t.check(baby.kind == "baby" and baby.sitting, "the baby sleeps in the crib")
 	talk_to(baby)
 	read_all()
+	await visiting_and_sneaking()
+
+func visiting_and_sneaking() -> void:
+	await get_tree().process_frame
+	game.hud.close_all()
+	t.check(travel("door", "city"), "out into town for the evening")
+	game.hud.open_console()
+	t.check(press("Night"), "cheat menu: Night")
+	t.check(press("Silent steps"), "cheat menu: Silent steps (never caught sneaking)")
+	game.hud.close_all()
+	# a friendly visit: knock at Kai's cottage
+	use("house_kai")
+	t.check(choose("Knock"), "Kai's cottage: Knock")
+	read_all()
+	step(0.2)
+	t.check(game.loc == game.npc_house and game.npc_house.host == "kai" and not game.sneaking, "Kai lets you in")
+	t.check(talk_to(game.npc_house.host_node), "walk over to Kai in his living room")
+	t.check(choose("Chat"), "chat with Kai at home")
+	read_all()
+	t.check(travel("door", "city"), "say goodnight and walk back out")
+	# sneaking into Ren's
+	use("house_ren")
+	t.check(choose("Sneak in"), "Ren's cottage: Sneak in…")
+	step(0.2)
+	read_all()
+	t.check(game.loc == game.npc_house and game.sneaking, "tiptoe into Ren's house")
+	use("snoop")
+	read_all()
+	t.check(int(Save.r("ren").get("snooped", -1)) == Save.day, "snoop through Ren's drawers")
+	t.check(travel("door", "city"), "slip back out into the night")
+	t.check(not game.sneaking, "no longer sneaking once outside")
 
 func _find_card(name_: String) -> Button:
 	# Home Store cards: the price button sits next to the item's name

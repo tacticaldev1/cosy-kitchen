@@ -873,10 +873,13 @@ func _journal_people(body: VBoxContainer) -> void:
 		iv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		h.add_child(iv)
 		var st: String = "your spouse ♥" if Save.married and Save.partner == id else "your partner ♥" if Save.partner == id else d.job
+		if game.life.cheating_with(id): st = "your secret sweetheart ♥"
+		elif game.life.is_lover(id): st = "your sweetheart ♥"
+		elif Save.r(id).get("ex", false): st = "your ex · " + d.job
 		iv.add_child(UI.label("%s · %s" % [d.name, st], 24, UI.PLUM, UI.font_display))
 		iv.add_child(UI.hearts(Save.hearts(id), 26))
 		iv.add_child(UI.label(d.bio, 17, UI.MUTED, UI.font_xbold, true))
-		var known: bool = Save.hearts(id) >= 2.0
+		var known: bool = Save.hearts(id) >= 2.0 or Save.r(id).get("known", false)
 		iv.add_child(UI.label("Loves: %s · Favourite dish: %s" % [", ".join(d.loves.map(People.gift_name)), d.fav] if known else "Get to know them better to learn what they love…", 16, UI.SAKURA_D, UI.font_xbold, true))
 		body.add_child(card)
 
@@ -910,6 +913,9 @@ func _review_card(r: Dictionary) -> Control:
 func _journal_family(body: VBoxContainer) -> void:
 	if Save.partner == "":
 		body.add_child(UI.label("Maybe one day someone special will share your life. Chat with the townsfolk, give gifts and ask them on dates.", 20, UI.MUTED, UI.font_xbold, true))
+		for k in Save.family.kids:
+			var par: String = k.get("parent", "")
+			body.add_child(UI.label("%s · %s%s" % [k.name, Life.kid_stage(k), (" · with " + People.npc_name(par)) if par != "" else ""], 21, UI.PLUM, UI.font_xbold))
 		return
 	var h := UI.hbox(14)
 	h.add_child(UI.tex(portrait(Save.partner), Vector2(110, 110)))
@@ -923,7 +929,9 @@ func _journal_family(body: VBoxContainer) -> void:
 	for k in Save.family.kids:
 		var kh := UI.hbox(10)
 		kh.add_child(UI.tex(UI.icon("baby", 48), Vector2(44, 44)))
-		kh.add_child(UI.label("%s · %s · %d days old" % [k.name, Life.kid_stage(k), Save.day - int(k.born)], 21, UI.PLUM, UI.font_xbold))
+		var par: String = k.get("parent", "")
+		var with_txt := (" · with " + People.npc_name(par)) if par != "" else ""
+		kh.add_child(UI.label("%s · %s · %d days old%s" % [k.name, Life.kid_stage(k), Save.day - int(k.born), with_txt], 21, UI.PLUM, UI.font_xbold))
 		body.add_child(kh)
 	if Save.married and Save.family.kids.is_empty() and int(Save.family.expecting) < 0:
 		body.add_child(UI.label("Thinking about a family? With a double bed at home, talk to %s in the evening." % People.npc_name(Save.partner), 18, UI.MUTED, UI.font_xbold, true))

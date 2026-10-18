@@ -19,6 +19,7 @@ var interacts: Array = []     # [{id, pos, r, label, act: Callable}]
 var npcs: Array = []          # Chibi nodes you can talk to (meta: npc, label)
 var active := false
 var music_mood := "cafe"
+var editable := true          # can you rearrange the furniture here?
 
 func setup(g: Game) -> void:
 	game = g

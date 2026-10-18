@@ -21,6 +21,8 @@ var loc: Location
 var cafe: CafeLocation
 var city: CityLocation
 var home: HomeLocation
+var npc_house: NpcHomeLocation
+var sneaking := false
 var stations := {}
 var counter: Array = []
 var open_key := ""
@@ -66,7 +68,8 @@ func _ready() -> void:
 	cafe = CafeLocation.new()
 	city = CityLocation.new()
 	home = HomeLocation.new()
-	for l in [cafe, city, home]:
+	npc_house = NpcHomeLocation.new()
+	for l in [cafe, city, home, npc_house]:
 		add_child(l)
 		l.setup(self)
 		locs[l.key] = l
@@ -133,6 +136,7 @@ func travel_now(to: String, entry: String) -> void:
 	loc.set_hour(Save.hour())
 	_snap_camera()
 	if to == "cafe": life.flag("visit_cafe")
+	if to != "npchome": sneaking = false
 	if hud: hud.location_changed()
 
 func _snap_camera() -> void:
@@ -837,6 +841,20 @@ func hearts_fx(id: String) -> void:
 	float_text("♥", at + Vector3(0, 0.1, 0))
 	Sfx.play("sparkle", 0.8, 1.2)
 
+func visit_house(id: String) -> void:
+	life.visit_house(id)
+
+## Walk into a townsperson's cottage (knocked politely, or sneaking in).
+func enter_house(id: String, sneak: bool) -> void:
+	sneaking = sneak
+	npc_house.set_host(id)
+	travel("npchome", "door")
+
+func leave_house() -> void:
+	var id := npc_house.host
+	sneaking = false
+	travel("city", "house_" + id)
+
 func open_shop_ui(id: String) -> void:
 	hud.open_shop(id)
 
@@ -993,6 +1011,20 @@ func _dev_setup(what: String) -> void:
 			hud.show_summary({"served": 7, "walked": 1, "sales": 7450, "tips": 820, "spend": 1630, "stars": 19, "new_recipes": 3}, 2)
 		"console":
 			hud.open_console()
+		"house":
+			Save.minute = float(Shot.arg("minute", "1320"))
+			Save.r(parts[1]).hearts = 8.0
+			Save.r(parts[1]).romance = true
+			instant = true
+			enter_house(parts[1], false)
+			instant = false
+			if Shot.arg("talk") != "": life.talk(parts[1])
+		"partnered":
+			Save.partner = "hana"; Save.married = true
+			Save.minute = 600.0
+			Save.r("ren").hearts = 6.0
+			travel_now("city", "bookshop")
+			life.talk("ren")
 		"lineup":
 			travel_now("home", "start")
 			player.global_position = Vector3(0, 0, -0.6)
@@ -1001,6 +1033,29 @@ func _dev_setup(what: String) -> void:
 			home.cam_bounds = Rect2(0, -0.6, 0.01, 0.01)
 			var looks := [People.NPCS.hana.look, People.NPCS.kai.look, People.NPCS.yuki.look, People.NPCS.ren.look, Chibi.random_look(null, "f"), Chibi.random_look(null, "m")]
 			looks[4].bottom = "dress"
+			if parts.size() > 1 and parts[1] == "hair":
+				looks = []
+				for st in Chibi.STYLES:
+					var lk := Chibi.random_look(null, "m" if st in Chibi.M_STYLES and not st in Chibi.F_STYLES else "f")
+					lk.style = st
+					looks.append(lk)
+				home.cam_offset = Vector3(0, 1.6, 3.6)
+				for i in looks.size():
+					var c := Chibi.new()
+					home.add_child(c)
+					c.build(looks[i], "adult")
+					c.global_position = Vector3(-1.6 + (i % 9) * 0.4, 0, 0.1 + (i / 9) * 0.6)
+					c.rotation.y = 0.35
+					c.feel("happy", 99.0)
+					var l := Label3D.new()
+					l.text = looks[i].style
+					l.font_size = 40
+					l.pixel_size = 0.002
+					l.outline_size = 8
+					home.add_child(l)
+					l.global_position = c.global_position + Vector3(0, 0.03, 0.22)
+				_update_camera(0.0, true)
+				return
 			for i in looks.size():
 				var c := Chibi.new()
 				home.add_child(c)
@@ -1015,6 +1070,9 @@ func _dev_setup(what: String) -> void:
 			var all: Array = []
 			for l in [cafe, city, home]:
 				all.append_array(NavReport.check(l, l.entry_point("door" if l != city else "home"), NavReport.points_for(l), Shot.arg("map") != ""))
+			for id in People.NPCS:
+				npc_house.set_host(id)
+				all.append_array(NavReport.check(npc_house, npc_house.entry_point("door"), NavReport.points_for(npc_house), Shot.arg("map") != "").map(func(p): return id + "'s " + p))
 			for pr in all: print("NAV ", pr)
 			for st in cafe.seats(): print("SEAT ", st.id, " ", st.pos, " app ", st.approach, " free ", cafe.nav.is_free(st.approach))
 			print("NAV done: %d problems" % all.size())

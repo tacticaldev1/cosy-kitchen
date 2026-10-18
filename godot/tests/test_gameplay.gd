@@ -190,6 +190,75 @@ func run(t) -> void:
 	t.check(Life.kid_stage(Save.family.kids[0]) == "baby", "newborns are babies")
 	for i in 10: game.life.new_day()
 	t.check(Life.kid_stage(Save.family.kids[0]) == "child", "…and grow into children")
+	# ---- drama: flirting, secrets, getting caught, divorce, gossip, houses
+	game.hud.close_all()
+	game.travel_now("city", "home")
+	Save.minute = 11 * 60.0
+	Save.r("ren").hearts = 4.0
+	game.life.rng.seed = 3
+	for i in 6:
+		Save.r("ren").flirted = -1
+		game.life.flirt("ren")
+	t.check(Save.hearts("ren") >= 5.0 and game.life.is_lover("ren") and game.life.cheating_with("ren"), "flirting while married: Ren becomes your secret sweetheart (%.1f)" % Save.hearts("ren"))
+	Save.r("ren").dated = -1
+	game.life.date("ren")
+	game.life._date_answer("ren", 1, People.DATES.ren[0])
+	t.check(int(Save.r("ren").dates) >= 1, "a secret date with Ren")
+	var dr_h0 := Save.hearts("hana")
+	game.life.caught("ren", "on a date with")
+	game.life._after_caught("hana", "ren", -3.0, true)
+	t.check(Save.hearts("hana") <= dr_h0 - 3.0 + 0.01 and not game.life.is_lover("ren") and Save.married, "getting caught: Hana is hurt, you promise to stop (%.1f → %.1f)" % [dr_h0, Save.hearts("hana")])
+	Save.r("hana").cheated = 2
+	game.life.caught("kai", "flirting with")
+	game.life._after_caught("hana", "kai", -4.0, false)
+	t.check(not Save.married and Save.partner == "" and Save.r("hana").ex and game.home.family.size() == Save.family.kids.size(), "caught a third time: divorce, Hana moves out, the kids stay")
+	# gossip about a friend gets back to them
+	Save.r("kai").hearts = 5.0
+	Save.r("yuki").hearts = 5.0
+	game.life.rng.seed = 1
+	var dr_heard := false
+	for i in 12:
+		Save.r("kai").gossiped = -1
+		game.life.gossip("kai", "yuki")
+		if Save.r("yuki").has("heard_from"):
+			dr_heard = true
+			break
+	t.check(dr_heard and Save.hearts("kai") > 5.0, "gossiping with Kai about Yuki (Kai likes it)")
+	var dr_y0 := Save.hearts("yuki")
+	game.life.talk("yuki")
+	t.check(Save.hearts("yuki") < dr_y0 and not Save.r("yuki").has("heard_from"), "…and Yuki finds out what you said")
+	# a night at Kai's place and a surprise baby
+	game.life.cheat("fertile")
+	Save.r("kai").hearts = 8.0
+	Save.r("kai").romance = true
+	Save.minute = 21.5 * 60.0
+	game.enter_house("kai", false)
+	t.check(game.loc == game.npc_house and game.npc_house.host == "kai" and game.npc_house.host_node != null, "knock at Kai's cottage at night and go in")
+	var dr_kids0: int = Save.family.kids.size()
+	game.life.stay_night("kai")
+	t.check(Save.family.get("others", []).size() == 1 and game.loc == game.npc_house, "stay the night (fade to black), wake up at Kai's")
+	for i in 5:
+		game.life.new_day()
+		game.life.morning()
+		game.sim(1.2)
+	t.check(Save.family.kids.size() == dr_kids0 + 1 and Save.family.kids.back().get("parent", "") == "kai", "days later Kai arrives with your baby")
+	game.life.cheat("fertile")
+	# sneaking into Yuki's house
+	game.hud.close_all()
+	Save.minute = 23.5 * 60.0
+	game.life.cheat("sneaky")
+	game.travel_now("city", "home")
+	game.life.sneak("yuki")
+	t.check(game.loc == game.npc_house and game.sneaking and Life.npc_asleep("yuki"), "sneak into Yuki's house while she sleeps")
+	var dr_w0 := Save.wallet
+	game.life.rng.seed = 5
+	game.life.snoop("yuki")
+	t.check(int(Save.r("yuki").snooped) == Save.day, "snoop around (found something: %s)" % ("money" if Save.wallet > dr_w0 else "a secret"))
+	game.life.cheat("sneaky")
+	var dr_y1 := Save.hearts("yuki")
+	game.life.caught_sneaking("yuki")
+	t.check(game.loc == game.city and Save.hearts("yuki") <= maxf(0.0, dr_y1 - 2.9) and not game.sneaking, "caught sneaking: thrown out, hearts lost (%s, %.1f→%.1f, sneaking %s, cutscene %s)" % [game.loc.key, dr_y1, Save.hearts("yuki"), game.sneaking, game.cutscene])
+	game.hud.close_all()
 	# ---- sleep & time
 	game.hud.close_all()
 	Save.minute = 600.0
@@ -210,6 +279,6 @@ func run(t) -> void:
 	var snap := Save.wallet
 	Save.wallet = 1
 	Save.load_game()
-	t.check(Save.wallet == snap and Save.married and Save.family.kids.size() == 1, "the save file round-trips the new life")
+	t.check(Save.wallet == snap and Save.r("hana").ex and Save.family.kids.size() == 2, "the save file round-trips the new life")
 	Save.reset()
 	game.queue_free()

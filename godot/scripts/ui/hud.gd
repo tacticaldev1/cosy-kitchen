@@ -381,7 +381,7 @@ func station_changed() -> void:
 	for n in ["hint_panel", "btns", "shelf", "shelf_tag"]:
 		(_cache[n] as Control).visible = cooking
 	if not cooking: close_fridge()
-	(_cache.edit_btn as Button).visible = game.loc != null and game.loc.furni != null
+	(_cache.edit_btn as Button).visible = game.loc != null and game.loc.furni != null and game.loc.editable
 	for k in tool_btns:
 		var on: bool = (k == "cafe" and game.open_key == "") or k == game.open_key
 		var b: Button = tool_btns[k].b
