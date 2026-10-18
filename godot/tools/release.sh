@@ -21,7 +21,7 @@ sed -i "s/^config\/version=\".*\"/config\/version=\"$VER\"/" project.godot
 sed -i "s/^application\/file_version=\".*\"/application\/file_version=\"$VER.0\"/; s/^application\/product_version=\".*\"/application\/product_version=\"$VER.0\"/" export_presets.cfg
 
 echo "== tests"
-tools/gd.sh test | grep -E "^[0-9]+ passed, [0-9]+ failed" | grep -q " 0 failed" || { echo "tests failed"; exit 1; }
+tools/gd.sh test 2>&1 | grep -E "^[0-9]+ passed, [0-9]+ failed" | grep -q " 0 failed" || { echo "tests failed"; exit 1; }
 
 echo "== export"
 mkdir -p build/windows build/web

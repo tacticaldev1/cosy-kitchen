@@ -25,7 +25,10 @@ How to play:
 - Put the dish on the **Plate**, pick it up, and carry it to the customer. Anything nobody ordered is a staff meal (`Q`) that restores energy.
 - Critics visit once your café has a reputation. Their reviews appear in the next morning's newspaper and move your café rating.
 - In town: Kai's Market (cheap pantry stock), the Home Store (furniture, wall and floor themes), the Boutique, Hana's Flowers, Ren's Books and Kobayashi Jewels. Use **Edit mode** (pencil button) to arrange furniture in the café or at home.
-- Chat with Hana, Ren, Kai and Yuki, give gifts, go on dates, become partners, propose with a ring and get married. With a double bed and a crib at home, you can start a family.
+- Chat with Hana, Ren, Kai and Yuki, flirt, give gifts, go on dates, become partners, propose with a ring and get married. With a double bed and a crib at home, you can start a family.
+- Life has drama too. You can keep a secret sweetheart behind your partner's back, but word gets around: get caught and you'll face a confrontation, and maybe a break-up or a divorce. Gossiping about friends can get back to them. A night at a sweetheart's cottage can lead to a surprise baby (always a tasteful fade to black).
+- Each townsperson has a cottage at the ends of the street. Knock in the evening, or sneak in and snoop around… if you dare.
+- 18 hairstyles, including braid, topknot, afro, mohawk, wavy, side part, buzz cut, drills, bowl cut and pixie.
 - Sleep in your bed to end the day. Stay up past 2am and you'll faint!
 - Make your chef feminine or masculine, with trousers, shorts, a skirt or a dress, and change it any time at the Boutique or your wardrobe.
 - Cheats: press `` ` `` (backtick) or open Settings → **Cheat menu** for 28 cheats in seven groups (money, cooking, café, you, time, love, stuff), including toggles like endless energy, speedy shoes, free ingredients and patient customers. You can also type codes like `kaching`, `millionaire`, `cookbook`, `fivestars`, `lovebirds`, `quickwedding` or `storkdelivery`.
