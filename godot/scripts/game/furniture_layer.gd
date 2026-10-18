@@ -79,19 +79,28 @@ func rebuild_nav() -> void:
 	for it in items:
 		if Furni.walkable(it.id): continue
 		var s := size_of(it.id, it.rot)
-		nav.block_rect(it.x, it.z, s.x, s.y, 0.16)
+		nav.block_rect(it.x, it.z, s.x, s.y, 0.14)
+	var loc := get_parent()
+	if loc is Location: (loc as Location)._reach_dirty = true
 
 ## Can this item go here? It must sit inside the room, off counters and other furniture.
 func can_place(id: String, x: float, z: float, rot: int, ignore: Dictionary = {}) -> bool:
 	var r := rect_of(id, x, z, rot)
-	if not area.encloses(r): return false
-	if not Furni.walkable(id):
+	if not area.grow(0.005).encloses(r): return false
+	if Furni.walkable(id):
+		# rugs can't overlap each other (they'd flicker where they share the floor)
+		for it in items:
+			if it != ignore and Furni.walkable(it.id) and rect_of(it.id, it.x, it.z, it.rot).intersects(r): return false
+	else:
 		for it in items:
 			if it == ignore or Furni.walkable(it.id): continue
 			if rect_of(it.id, it.x, it.z, it.rot).grow(0.02).intersects(r): return false
-		# don't cover the fixed counters / doors (static grid without padding check at centre + corners)
-		for p in [Vector3(r.position.x + 0.05, 0, r.position.y + 0.05), Vector3(r.end.x - 0.05, 0, r.position.y + 0.05), Vector3(r.position.x + 0.05, 0, r.end.y - 0.05), Vector3(r.end.x - 0.05, 0, r.end.y - 0.05), Vector3(x, 0, z)]:
-			if not _static_free(p): return false
+		# don't overlap the room's fixed counters, stools and fittings
+		var loc := get_parent()
+		if loc is Location and (loc as Location).room:
+			for o in (loc as Location).room.world_obstacles():
+				var op: Vector3 = o[0]
+				if Rect2(op.x - o[1] * 0.5, op.z - o[2] * 0.5, o[1], o[2]).grow(0.02).intersects(r): return false
 	return true
 
 func _static_free(p: Vector3) -> bool:
@@ -127,7 +136,16 @@ func seats() -> Array:
 		for s in Furni.seats(it.id):
 			var b := Basis.from_euler(Vector3(0, it.rot * PI * 0.5, 0))
 			var p: Vector3 = global_transform * (Vector3(it.x, 0, it.z) + b * s[0])
-			out.append({"pos": p, "yaw": s[1] + it.rot * PI * 0.5, "h": s[2], "id": it.id})
+			var yaw: float = s[1] + it.rot * PI * 0.5
+			# where to stand before sitting: behind the seat (away from the table), else beside it
+			var fwd := Vector3(sin(yaw), 0, cos(yaw))
+			var side := Vector3(fwd.z, 0, -fwd.x)
+			var app := p - fwd * 0.45
+			for cand in [p - fwd * 0.45, p - fwd * 0.6, p - fwd * 0.3 + side * 0.55, p - fwd * 0.3 - side * 0.55, p + side * 0.7, p - side * 0.7]:
+				if nav == null or nav.is_free(cand):
+					app = cand
+					break
+			out.append({"pos": p, "yaw": yaw, "h": s[2], "id": it.id, "approach": app})
 	return out
 
 func count(id: String) -> int:

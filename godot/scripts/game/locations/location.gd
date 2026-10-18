@@ -31,8 +31,20 @@ func make_nav(bounds: Rect2, cell := 0.15) -> void:
 	nav.block_border(0.2)
 	if room:
 		for o in room.world_obstacles():
-			nav.block_rect(o[0].x, o[0].z, o[1], o[2], 0.18)
+			nav.block_rect(o[0].x, o[0].z, o[1], o[2], 0.15)
 	nav.freeze_static()
+
+var _reach := PackedByteArray()
+var _reach_dirty := true
+
+## Can you walk to p from the entrance? (cached; furniture changes clear the cache)
+func reachable(p: Vector3) -> bool:
+	if nav == null: return true
+	if _reach_dirty or _reach.size() != nav.w * nav.h:
+		_reach = NavReport.reach(nav, entry_point("door"))
+		_reach_dirty = false
+	var c := nav.cell_of(p)
+	return nav.free_cell(c) and _reach[c.y * nav.w + c.x] == 1
 
 func activate(on: bool) -> void:
 	active = on

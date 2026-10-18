@@ -7,9 +7,9 @@ const OPEN_FROM := 8 * 60.0
 const LAST_ORDERS := 21.5 * 60.0
 const NAMES := ["Mina", "Haru", "Sora", "Koko", "Nana", "Taro", "Emi", "Aoi", "Ken", "Rin", "Mio", "Sota", "Yui", "Daichi", "Saki", "Kaito", "Hina", "Riku", "Momo", "Natsu"]
 const CRITICS := [
-	{"name": "Critic Kuroda", "paper": "The Hoshizora Times", "look": {"skin": "F2CDB0", "hair": "3A2A2A", "shirt": "3B2340", "pants": "2E2A3A", "style": "short"}},
-	{"name": "Madame Fujii", "paper": "Gourmet Monthly", "look": {"skin": "FFE2D2", "hair": "C8C8D8", "shirt": "6A3E5A", "pants": "2E2A3A", "style": "bob"}},
-	{"name": "Chef Lorenzo", "paper": "Food & Travel", "look": {"skin": "E8B896", "hair": "2E2A3A", "shirt": "E8504A", "pants": "3B4A7A", "style": "curly"}},
+	{"name": "Critic Kuroda", "paper": "The Hoshizora Times", "look": {"body": "m", "skin": "F2CDB0", "hair": "3A2A2A", "shirt": "3B2340", "pants": "2E2A3A", "style": "short"}},
+	{"name": "Madame Fujii", "paper": "Gourmet Monthly", "look": {"body": "f", "bottom": "dress", "skin": "FFE2D2", "hair": "C8C8D8", "shirt": "6A3E5A", "pants": "2E2A3A", "style": "bob"}},
+	{"name": "Chef Lorenzo", "paper": "Food & Travel", "look": {"body": "m", "skin": "E8B896", "hair": "2E2A3A", "shirt": "E8504A", "pants": "3B4A7A", "style": "curly"}},
 ]
 const CAT_DISHES := ["Salmon Nigiri", "Tuna Nigiri", "Salmon Onigiri", "Salmon Maki", "Fish & Chips"]
 
@@ -23,6 +23,7 @@ var active := -1
 var uid := 1
 var special := -1   # today's special recipe id
 var critic_today := false
+var force_critic := false
 
 signal changed
 
@@ -31,7 +32,7 @@ func new_stats() -> Dictionary:
 
 ## Customer seats: bar stools plus seats at tables you've placed (lone chairs and sofas don't count).
 func seat_list() -> Array:
-	return game.cafe.seats().filter(func(s): return s.id in ["bar", "table2", "table4", "booth"])
+	return game.cafe.seats().filter(func(s): return s.id in ["bar", "table2", "table4", "booth"] and game.cafe.reachable(s.approach))
 
 func seats() -> int:
 	return seat_list().size()
@@ -147,6 +148,9 @@ func pick_order(kind: String, fav := "") -> int:
 	return pool[0].id
 
 func _want_critic() -> bool:
+	if force_critic:
+		force_critic = false
+		return true
 	if critic_today: return false
 	if Story.active() and Save.chapter == 3 and not Save.flags.get("critic4", false): return stats.get("served", 0) >= 2
 	return Save.reputation >= 1.5 and randf() < 0.06 + Save.reputation * 0.01
@@ -191,12 +195,14 @@ func spawn() -> void:
 	c.seat_pos = s.pos
 	c.seat_yaw = s.yaw
 	c.seat_h = s.h if c.ckind != "cat" else s.h + 0.2
-	c.table_y = 1.07 if s.id == "bar" else 0.79
+	c.table_y = 1.056 if s.id == "bar" else (0.775 if s.id != "table4" else 0.77)
 	c.table_d = 0.42 if s.id == "bar" else 0.3
 	var door := game.cafe.room.mark("door")
 	c.global_position = game.cafe.room.mark("door_out")
+	c.set_meta("approach", s.approach)
 	var path := PackedVector3Array([door])
-	path.append_array(game.cafe.nav.path(door, s.pos))
+	path.append_array(game.cafe.nav.path(door, s.approach))
+	path.append(Vector3(s.pos.x, 0, s.pos.z))
 	c.walk_path(path)
 	c.state = "enter"
 	c.patience = (70.0 + Save.reputation * 4.0) * (1.3 if c.ckind == "regular" else 1.0)
@@ -228,9 +234,13 @@ func leave(c: Customer, sad: bool, quiet := false) -> void:
 	c.t = 0.0
 	c.set_bubble("heart" if not sad and c.stars >= 2 else "")
 	c.feel("yuck" if sad else "happy", 3.0)
+	var was_seated := c.sitting
 	c.stand_up()
 	var door := game.cafe.room.mark("door")
-	var path := game.cafe.nav.path(c.global_position, door)
+	var app: Vector3 = c.get_meta("approach", c.global_position)
+	var path := PackedVector3Array()
+	if was_seated: path.append(app)
+	path.append_array(game.cafe.nav.path(app if was_seated else c.global_position, door))
 	path.append(game.cafe.room.mark("door_out"))
 	c.walk_path(path)
 	if c.meal:
@@ -353,7 +363,7 @@ func update(dt: float) -> void:
 					c.set_bubble("wait")
 					changed.emit()
 			"wait", "order":
-				if not stop:
+				if not stop and not Life.cheat_on("zen"):
 					c.patience -= dt
 				if c.patience / c.pmax < 0.25 and c.face and c.face.mood == "idle": c.feel("sleepy", 0.5)
 				if c.patience <= 0.0:

@@ -11,6 +11,9 @@ const HAIRS := [Color("4B2E5A"), Color("E8A04A"), Color("6A4AC8"), Color("3A2A2A
 const SHIRTS := [Color("8B7BC9"), Color("7FD3B8"), Color("FF9EBB"), Color("FFD24A"), Color("A9C8FF"), Color("B7E3A0"), Color("FFB86A"), Color("F2F2F8"), Color("E8504A"), Color("3B4A7A")]
 const PANTS := [Color("5A4A70"), Color("3B4A7A"), Color("8A6A4A"), Color("2E2A3A"), Color("FFC2D6"), Color("BDEBDD")]
 const STYLES := ["bob", "buns", "twin", "short", "long", "pony", "spiky", "curly"]
+const F_STYLES := ["bob", "buns", "twin", "long", "pony", "curly"]
+const M_STYLES := ["short", "spiky", "curly", "bob"]
+const BOTTOMS := ["pants", "shorts", "skirt", "dress"]
 
 var look := {}
 var kind := "adult"      # adult | child | toddler | baby | cat
@@ -35,11 +38,21 @@ var _eat := false
 var _apron: Node3D
 var _hat: Node3D
 
-static func random_look(rng: RandomNumberGenerator = null) -> Dictionary:
+## body: "f" (feminine) or "m" (masculine); empty picks one at random.
+static func random_look(rng: RandomNumberGenerator = null, body_ := "") -> Dictionary:
 	var r := rng if rng else RandomNumberGenerator.new()
 	if rng == null: r.randomize()
-	return {"skin": SKINS[r.randi() % 7].to_html(false), "hair": HAIRS[r.randi() % HAIRS.size()].to_html(false), "shirt": SHIRTS[r.randi() % SHIRTS.size()].to_html(false),
-		"pants": PANTS[r.randi() % PANTS.size()].to_html(false), "style": STYLES[r.randi() % STYLES.size()], "acc": ""}
+	var b := body_ if body_ != "" else ("f" if r.randf() < 0.5 else "m")
+	var styles: Array = F_STYLES if b == "f" else M_STYLES
+	var bottoms: Array = ["pants", "skirt", "dress", "shorts", "pants"] if b == "f" else ["pants", "pants", "shorts"]
+	return {"body": b, "skin": SKINS[r.randi() % 7].to_html(false), "hair": HAIRS[r.randi() % HAIRS.size()].to_html(false), "shirt": SHIRTS[r.randi() % SHIRTS.size()].to_html(false),
+		"pants": PANTS[r.randi() % PANTS.size()].to_html(false), "style": styles[r.randi() % styles.size()], "bottom": bottoms[r.randi() % bottoms.size()], "acc": ""}
+
+## Older looks have no body type: guess from the hairstyle.
+static func body_of(lk: Dictionary) -> String:
+	var b: String = lk.get("body", "")
+	if b == "f" or b == "m": return b
+	return "m" if String(lk.get("style", "bob")) in ["short", "spiky"] else "f"
 
 static func _c(v, fallback: Color) -> Color:
 	if v is Color: return v
@@ -72,12 +85,32 @@ func _build_person() -> void:
 	var pants := _c(look.get("pants"), PANTS[0])
 	var style: String = look.get("style", "bob")
 	var acc: String = look.get("acc", "")
+	var fem := body_of(look) == "f"
+	var bottom: String = look.get("bottom", "pants")
+	if not bottom in BOTTOMS: bottom = "pants"
 	# legs on hip pivots so they can swing
-	leg_l = _leg(pants, -1.0)
-	leg_r = _leg(pants, 1.0)
+	leg_l = _leg(pants, skin, -1.0, bottom)
+	leg_r = _leg(pants, skin, 1.0, bottom)
 	var mb := MB.new()
 	mb.col(shirt, 1.0, 0.1)
-	mb.lathe(MB.spline(PackedVector2Array([Vector2(0, 0.17), Vector2(0.11, 0.175), Vector2(0.125, 0.21), Vector2(0.105, 0.35), Vector2(0.07, 0.42), Vector2(0, 0.43)]), 4), 24)
+	if fem:
+		# softer shape: a little waist, rounder shoulders
+		mb.lathe(MB.spline(PackedVector2Array([Vector2(0, 0.17), Vector2(0.105, 0.175), Vector2(0.118, 0.205), Vector2(0.093, 0.29), Vector2(0.1, 0.36), Vector2(0.07, 0.42), Vector2(0, 0.43)]), 4), 24)
+	else:
+		# squarer, broader shoulders
+		mb.lathe(MB.spline(PackedVector2Array([Vector2(0, 0.17), Vector2(0.112, 0.175), Vector2(0.122, 0.21), Vector2(0.118, 0.33), Vector2(0.112, 0.385), Vector2(0.075, 0.425), Vector2(0, 0.435)]), 4), 24)
+	if bottom == "skirt" or bottom == "dress":
+		var sc := shirt if bottom == "dress" else pants
+		var low := 0.07 if bottom == "dress" else 0.1
+		mb.col(sc, 1.0, 0.15)
+		mb.lathe(MB.spline(PackedVector2Array([Vector2(0, low), Vector2(0.15, low), Vector2(0.155, low + 0.01), Vector2(0.125, 0.17), Vector2(0.108, 0.215), Vector2(0, 0.215)]), 4), 28,
+			func(u: float, _v: float) -> float: return 1.0 + 0.04 * sin(u * TAU * 8.0))
+		mb.col(Color.WHITE, 0.0, 0.2)
+		var hem := PackedVector3Array()
+		for i in 41:
+			var a := TAU * i / 40.0
+			hem.append(Vector3(sin(a) * 0.154, low + 0.012, cos(a) * 0.154))
+		mb.tube(hem, 0.004, 4)
 	if acc == "critic":
 		mb.col(Color("E8404A"), 1.0, 0.4); mb.at(Vector3(0, 0.37, 0.085)); mb.ellipsoid(0.022, 0.016, 0.01, 10, 6); mb.pop()
 	else:
@@ -118,6 +151,13 @@ func _build_person() -> void:
 		for i in 5:
 			var a := i * TAU / 5.0
 			hb.at(Vector3(-0.1 + cos(a) * 0.02, 0.1 + sin(a) * 0.02, 0.068)); hb.sphere(0.012, 8, 6); hb.pop()
+	if fem:
+		# little eyelashes at the outer corners of the eyes
+		hb.col(Color("3B2340"), 0.0)
+		for s in [-1.0, 1.0]:
+			for k in 2:
+				var base := Vector3(s * (0.04 - k * 0.006), -0.009 + k * 0.004, 0.141)
+				hb.tube(PackedVector3Array([base, base + Vector3(s * 0.006, 0.004, 0.003), base + Vector3(s * 0.014, 0.006 - k * 0.002, 0.004)]), 0.0024, 4)
 	head.add_child(FoodArt.mesh_node(FoodArt.finish(hb)))
 	if acc == "critic" or acc == "glasses":
 		var gb := MB.new()
@@ -140,11 +180,19 @@ func _build_person() -> void:
 	head.add_child(face)
 	hold.position = Vector3(0, 0.36, 0.2)
 
-func _leg(c: Color, s: float) -> Node3D:
+func _leg(c: Color, skin: Color, s: float, bottom := "pants") -> Node3D:
 	var pivot := Node3D.new()
 	pivot.position = Vector3(s * 0.05, 0.2, 0)
 	var mb := MB.new()
-	mb.col(c); mb.tube(PackedVector3Array([Vector3(0, 0.0, 0), Vector3(0, -0.15, 0)]), 0.033, 10)
+	match bottom:
+		"shorts":
+			mb.col(c); mb.tube(PackedVector3Array([Vector3(0, 0.0, 0), Vector3(0, -0.07, 0)]), 0.037, 10)
+			mb.col(skin); mb.tube(PackedVector3Array([Vector3(0, -0.06, 0), Vector3(0, -0.15, 0)]), 0.028, 10)
+		"skirt", "dress":
+			mb.col(skin); mb.tube(PackedVector3Array([Vector3(0, 0.0, 0), Vector3(0, -0.12, 0)]), 0.028, 10)
+			mb.col(Color.WHITE, 1.0); mb.tube(PackedVector3Array([Vector3(0, -0.1, 0), Vector3(0, -0.15, 0)]), 0.03, 10)
+		_:
+			mb.col(c); mb.tube(PackedVector3Array([Vector3(0, 0.0, 0), Vector3(0, -0.15, 0)]), 0.033, 10)
 	mb.col(Color("FFFFFF") if look.get("acc", "") != "critic" else Color("6A3E20"), 1.0, 0.3); mb.at(Vector3(0, -0.165, 0.02)); mb.ellipsoid(0.038, 0.03, 0.05, 12, 8); mb.pop()
 	pivot.add_child(FoodArt.mesh_node(FoodArt.finish(mb)))
 	body.add_child(pivot)

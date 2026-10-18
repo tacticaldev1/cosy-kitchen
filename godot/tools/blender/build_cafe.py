@@ -126,15 +126,17 @@ sphere("kteapot", (-1.7, 2.02 + 0.09, Z0 + 0.14), 0.1, "A9C8FF", (1.1, 0.85, 1.0
 
 # --------------------------------------------------------------------- kitchen: cooking island
 IZ = -0.95
-box("is_top", (-2.15, 0.89, IZ), (2.1, 0.06, 0.74), "FFF4E2", 0.02, parent=root)
-box("is_body", (-2.15, 0.44, IZ), (2.04, 0.86, 0.68), "C3A6FF", 0.015, parent=root)
-box("is_door", (-1.45, 0.45, IZ + 0.345), (0.5, 0.7, 0.02), "D7C8FF", 0.01, parent=root)
-for k, x in {"pot": -2.85, "pan": -2.35, "micro": -1.5}.items():
+# the island stops short of the pass so there's a walkway into the back aisle
+box("is_top", (-2.38, 0.89, IZ), (1.7, 0.06, 0.74), "FFF4E2", 0.02, parent=root)
+box("is_body", (-2.38, 0.44, IZ), (1.64, 0.86, 0.68), "C3A6FF", 0.015, parent=root)
+box("is_door", (-1.82, 0.45, IZ + 0.345), (0.42, 0.7, 0.02), "D7C8FF", 0.01, parent=root)
+for k, x in {"pot": -2.95, "pan": -2.45, "micro": -1.86}.items():
     empty("mark_%s" % k, (x, 0.92, -0.98), root)
-empty("mark_oven", (-2.6, 0.0, IZ + 0.37), root)
+empty("mark_oven", (-2.7, 0.0, IZ + 0.37), root)
 empty("mark_freezer", (-3.72, 0.0, -0.95), root)
 empty("mark_bin", (-3.75, 0.0, 0.75), root)
-obstacle(-2.57, -0.88, 2.98, 0.9)
+obstacle(-2.38, -0.92, 1.72, 0.8)
+obstacle(-3.72, -0.95, 0.66, 0.72)
 obstacle(-3.75, 0.75, 0.5, 0.5)
 
 # --------------------------------------------------------------------- the pass + bar

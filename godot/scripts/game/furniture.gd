@@ -117,7 +117,7 @@ static func _build(mb: MB, id: String) -> void:
 			for p in [Vector3(-0.32, 0, -0.32), Vector3(0.32, 0, -0.32), Vector3(-0.32, 0, 0.32), Vector3(0.32, 0, 0.32)]:
 				mb.tube(PackedVector3Array([p, p + Vector3(0, 0.72, 0)]), 0.035, 10)
 			mb.col(Color("FFF4E2"), 1.0, 0.2); mb.at(Vector3(0, 0.74, 0)); mb.rbox(Vector3(0.85, 0.05, 0.85), 0.02, 2); mb.pop()
-			mb.col(Color("FFC2D6"), 0.0); mb.at(Vector3(0, 0.7665, 0)); mb.rbox(Vector3(0.5, 0.002, 0.86), 0.001, 1); mb.pop()
+			mb.col(Color("FFC2D6"), 0.0); mb.at(Vector3(0, 0.7695, 0)); mb.rbox(Vector3(0.5, 0.003, 0.86), 0.001, 1); mb.pop()
 			_chair(mb, Vector3(-0.6, 0, 0), PI * 0.5)
 			_chair(mb, Vector3(0.6, 0, 0), -PI * 0.5)
 			_chair(mb, Vector3(0, 0, -0.6), 0.0)
@@ -182,9 +182,9 @@ static func _build(mb: MB, id: String) -> void:
 				mb.at(Vector3(s * 0.26, 0.95, 0.28)); mb.rbox(Vector3(0.48, 1.55, 0.02), 0.02, 1); mb.pop()
 				mb.col(Color("FFD24A"), 0.6); mb.at(Vector3(s * 0.05, 0.95, 0.3)); mb.sphere(0.025, 8, 6); mb.pop(); mb.col(Color("FFD6C2"), 0.6)
 		"rug":
-			mb.col(Color("C3A6FF"), 0.0, 0.0); mb.puck(1.0, 0.012, 0.004, 48)
-			mb.col(Color("E2D6FF"), 0.0, 0.0); mb.at(Vector3(0, 0.002, 0)); mb.puck(0.82, 0.012, 0.004, 48); mb.pop()
-			mb.col(Color("FFC2D6"), 0.0, 0.0); mb.at(Vector3(0, 0.004, 0)); mb.puck(0.5, 0.012, 0.004, 40); mb.pop()
+			mb.col(Color("C3A6FF"), 0.0, 0.0); mb.at(Vector3(0, 0.004, 0)); mb.puck(1.0, 0.012, 0.004, 48); mb.pop()
+			mb.col(Color("E2D6FF"), 0.0, 0.0); mb.at(Vector3(0, 0.009, 0)); mb.puck(0.82, 0.012, 0.004, 48); mb.pop()
+			mb.col(Color("FFC2D6"), 0.0, 0.0); mb.at(Vector3(0, 0.014, 0)); mb.puck(0.5, 0.012, 0.004, 40); mb.pop()
 		"plant", "big_plant":
 			var big := id == "big_plant"
 			mb.col(Color("E8826A") if not big else Color.WHITE, 1.0, 0.1)

@@ -1013,6 +1013,7 @@ func show_summary(s: Dictionary, day: int) -> void:
 
 # ---------------------------------------------------------------- settings
 func open_settings() -> void:
+	var mh := {}
 	var pr := _panel("Settings", "Sound mixer and options", 720)
 	var v: VBoxContainer = pr[1]
 	for s in [["master", "Master volume"], ["sfx", "Cooking sounds (ASMR)"], ["amb", "Rain ambience"], ["music", "Lo-fi music"]]:
@@ -1073,7 +1074,10 @@ func open_settings() -> void:
 		vrow.add_child(cu)
 	v.add_child(vrow)
 	var crow := UI.hbox(10)
-	crow.add_child(UI.label("Cheat code", 20, UI.PLUM, UI.font_xbold))
+	crow.add_child(UI.button("Cheat menu…", "Gold", func():
+		close_modal(mh.w)
+		open_console(), 20))
+	crow.add_child(UI.label("or type a code", 18, UI.MUTED, UI.font_xbold))
 	var code := LineEdit.new()
 	code.placeholder_text = "psst… try kaching"
 	code.custom_minimum_size = Vector2(300, 48)
@@ -1086,7 +1090,6 @@ func open_settings() -> void:
 	v.add_child(UI.label("Walk: WASD / arrows or click · E / Space = interact · J = journal · B = book · F = fridge · Q = eat carried dish · In a station: Space = action, 1-8 = counter, ←/→ = stations, Esc = step back · ` = cheat console", 17, UI.MUTED, UI.font_xbold, true))
 	var row2 := UI.hbox(12)
 	v.add_child(row2)
-	var mh := {}
 	var reset := UI.button("Reset progress…", "Ghost", Callable(), 20)
 	reset.pressed.connect(func():
 		if reset.get_meta("armed", false):

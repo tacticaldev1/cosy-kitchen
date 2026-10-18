@@ -29,6 +29,7 @@ var guide_dirty := true
 var carrying := {}          # the dish in your hands: {foods, d, q, rid, node}
 var cutscene := false
 var instant := false        # tests: walking happens instantly
+var skip_fx := false        # tests: fades finish instantly (walking and dialogue stay real)
 var focus := {}             # what E / Space would interact with right now
 var _guide := {}
 var _guide_t := -1.0
@@ -182,9 +183,14 @@ func open_station(key: String, walk := true) -> void:
 	if loc != cafe:
 		toast("The kitchen is at the café")
 		return
-	if open_key == "" and walk and not instant:
+	if key == open_key: return
+	if walk and not instant:
 		var stand: Vector3 = cafe.stand[key]
 		if player.global_position.distance_to(stand) > 0.35:
+			# step back from the current station and walk over, no teleporting
+			if open_key != "":
+				if stations[open_key].busy(): toast("The %s keeps going while you're away" % LABEL[open_key])
+				leave_station()
 			player.go_to(stand, func(): _enter_station(key))
 			return
 	_enter_station(key)
@@ -277,6 +283,9 @@ func _update_focus() -> void:
 			for c in shop.customers:
 				if c.state != "wait" and c.state != "order" and c.state != "eat": continue
 				var d := Vector2(p.x, p.z).distance_to(Vector2(c.global_position.x, c.global_position.z))
+				# seated customers can also be reached from the spot beside their chair
+				var app: Vector3 = c.get_meta("approach", c.global_position)
+				d = minf(d, Vector2(p.x, p.z).distance_to(Vector2(app.x, app.z)) + 0.15)
 				if d < best:
 					best = d
 					f = {"kind": "cust", "c": c, "label": _cust_label(c)}
@@ -400,7 +409,7 @@ func _pointer_down(p: Vector2) -> void:
 	if loc == cafe:
 		var c := shop.pick(p)
 		if c:
-			go_and(c.global_position, 0.7, func(): customer_tap(c))
+			walk_to_customer(c)
 			return
 	var n := loc.pick_npc(p, camera)
 	if n:
@@ -474,6 +483,20 @@ func _update_hover() -> void:
 			hover_tag.scale = Vector3.ONE * (1.0 + 0.04 * sin(clock * 6.0)) * (1.6 if loc == city else 1.0)
 
 # ---------------------------------------------------------------- customers & serving
+## Walks to the spot beside a customer's seat (always reachable), then serves or takes the order.
+func walk_to_customer(c: Customer) -> void:
+	if not c.has_meta("approach") or not c.sitting:
+		go_and(c.global_position, 0.7, func(): customer_tap(c))
+		return
+	var app: Vector3 = c.get_meta("approach")
+	var done := func():
+		player.rotation.y = atan2(c.global_position.x - player.global_position.x, c.global_position.z - player.global_position.z)
+		customer_tap(c)
+	if instant or Vector2(player.global_position.x, player.global_position.z).distance_to(Vector2(app.x, app.z)) < 0.3:
+		done.call()
+	else:
+		player.go_to(app, done)
+
 func customer_tap(c: Customer) -> void:
 	match c.state:
 		"wait": shop.take_order(c)
@@ -661,6 +684,7 @@ func on_hand() -> Dictionary:
 ## Takes an ingredient from your pantry if you stocked it at the market, otherwise pays
 ## the delivery price.
 func charge(key: String) -> int:
+	if Life.cheat_on("freefood"): return 0
 	if int(Save.pantry.get(key, 0)) > 0:
 		Save.pantry[key] = int(Save.pantry[key]) - 1
 		if Save.pantry[key] <= 0: Save.pantry.erase(key)
@@ -969,6 +993,32 @@ func _dev_setup(what: String) -> void:
 			hud.show_summary({"served": 7, "walked": 1, "sales": 7450, "tips": 820, "spend": 1630, "stars": 19, "new_recipes": 3}, 2)
 		"console":
 			hud.open_console()
+		"lineup":
+			travel_now("home", "start")
+			player.global_position = Vector3(0, 0, -0.6)
+			home.cam_offset = Vector3(0, 0.9, 2.3)
+			home.cam_look = Vector3(0, 0.38, 0.6)
+			home.cam_bounds = Rect2(0, -0.6, 0.01, 0.01)
+			var looks := [People.NPCS.hana.look, People.NPCS.kai.look, People.NPCS.yuki.look, People.NPCS.ren.look, Chibi.random_look(null, "f"), Chibi.random_look(null, "m")]
+			looks[4].bottom = "dress"
+			for i in looks.size():
+				var c := Chibi.new()
+				home.add_child(c)
+				c.build(looks[i], "adult")
+				c.global_position = Vector3(-1.0 + i * 0.4, 0, 0.1)
+				c.feel("happy", 99.0)
+			_update_camera(0.0, true)
+		"navreport":
+			if Shot.arg("obs") != "":
+				for l in [cafe, city, home]:
+					for o in l.room.world_obstacles(): print("OBS ", l.key, " ", o)
+			var all: Array = []
+			for l in [cafe, city, home]:
+				all.append_array(NavReport.check(l, l.entry_point("door" if l != city else "home"), NavReport.points_for(l), Shot.arg("map") != ""))
+			for pr in all: print("NAV ", pr)
+			for st in cafe.seats(): print("SEAT ", st.id, " ", st.pos, " app ", st.approach, " free ", cafe.nav.is_free(st.approach))
+			print("NAV done: %d problems" % all.size())
+			get_tree().quit()
 		_:
 			if stations.has(parts[0]):
 				var w: String = parts[0]

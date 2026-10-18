@@ -65,7 +65,7 @@ for sid, x, w, h, wall, roof, awn in SHOPS:
                         sphere("%s_fl_%d_%d_%d" % (sid, fl, k, f), (wx - 0.3 + f * 0.2, wy - 0.38, FZ + 0.2), 0.07, ["FF7EA6", "FFD24A", "FFFFFF", "C3A6FF"][f], parent=g)
     else:
         # a cute pitched roof
-        bpy.ops.mesh.primitive_cylinder_add(vertices=3, radius=1.0, depth=w + 0.5, location=g2b(x, h + 0.55, FZ - 3.0))
+        bpy.ops.mesh.primitive_cylinder_add(vertices=3, radius=1.0, depth=w + 0.3, location=g2b(x, h + 0.55, FZ - 3.0))
         o = bpy.context.active_object
         o.name = sid + "_roof"
         o.scale = (1.0, 1.0, 1.0)
@@ -104,7 +104,8 @@ for sid, x, w, h, wall, roof, awn in SHOPS:
     aw = w * 0.9
     for i in range(stripes):
         sx = x - aw / 2 + (i + 0.5) * aw / stripes
-        box("%s_awn_%d" % (sid, i), (sx, 2.75, FZ + 0.55), (aw / stripes + 0.005, 0.08, 1.15), awn if i % 2 else "FFFFFF", 0.0, parent=g, rot=(0.38, 0, 0))
+        # alternate stripes are a touch thicker so neighbouring faces never share a plane (no flicker)
+        box("%s_awn_%d" % (sid, i), (sx, 2.75, FZ + 0.55), (aw / stripes + (0.006 if i % 2 else -0.002), 0.08 if i % 2 else 0.068, 1.15 if i % 2 else 1.14), awn if i % 2 else "FFFFFF", 0.0, parent=g, rot=(0.38, 0, 0))
     for i in range(stripes):
         sx = x - aw / 2 + (i + 0.5) * aw / stripes
         sphere("%s_scal_%d" % (sid, i), (sx, 2.5, FZ + 1.1), aw / stripes * 0.5, awn if i % 2 else "FFFFFF", (1, 0.6, 0.4), parent=g)
@@ -169,8 +170,8 @@ for x in (-25, -16.5, 15.5, 25):
 
 # --------------------------------------------------------------------- the park
 box("park_grass", (0, -0.03, 8.5), (20, 0.04, 9.0), "A3DA86", 0.0, mname="park_noline", parent=root)
-box("park_path", (0, -0.01, 8.5), (2.0, 0.04, 9.0), "F0D2B0", 0.0, mname="path_noline", parent=root)
-cyl("path_ring", (0, -0.008, 8.5), 2.6, 0.04, "F0D2B0", 0.0, 48, mname="path2_noline", parent=root)
+box("park_path", (0, -0.016, 8.5), (2.0, 0.04, 9.0), "F0D2B0", 0.0, mname="path_noline", parent=root)
+cyl("path_ring", (0, -0.002, 8.5), 2.6, 0.04, "F0D2B0", 0.0, 48, mname="path2_noline", parent=root)
 # fountain
 cyl("fountain_base", (0, 0.25, 8.5), 1.4, 0.5, "E8E2F2", 0.03, 40, parent=root)
 cyl("fountain_water", (0, 0.46, 8.5), 1.25, 0.06, "9BD8F0", 0.0, 40, mname="water_glow", parent=root)
@@ -203,6 +204,7 @@ box("hedge_e", (10.3, 0.4, 8.5), (0.6, 0.8, 9.0), "6BBF59", 0.15, parent=root)
 box("hedge_s", (0, 0.4, 13.3), (21.2, 0.8, 0.6), "6BBF59", 0.15, parent=root)
 obstacle(-10.3, 8.5, 0.6, 9.0)
 obstacle(10.3, 8.5, 0.6, 9.0)
+obstacle(0, 13.3, 21.2, 0.6)
 # little touches: vending machine, mailbox, bus stop
 box("vending", (-26.5, 0.9, -3.4), (0.9, 1.8, 0.7), "FF9EBB", 0.04, parent=root)
 box("vending_win", (-26.5, 1.15, -3.04), (0.7, 0.9, 0.02), "FFF6D2", 0.01, mname="vend_glow", parent=root)

@@ -20,10 +20,11 @@ func _index(n: Node) -> void:
 	if nm.begins_with("mark_"):
 		marks[nm.substr(5)] = n
 	elif nm.begins_with("obs_"):
+		# obs_<i>_<w>_<d>; Godot's importer turns the "." in "3.48" into "_", so accept both
 		var p := nm.split("_")
 		if p.size() >= 4:
-			var w := float(p[2])
-			var d := float(p[3])
+			var w := float(p[2]) if p.size() < 6 else float(p[2] + "." + p[3])
+			var d := float(p[3]) if p.size() < 6 else float(p[4] + "." + p[5])
 			var pos: Vector3 = (n as Node3D).position
 			obstacles.append([pos, w, d])
 	if n is MeshInstance3D:

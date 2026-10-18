@@ -147,7 +147,7 @@ func update(dt: float) -> void:
 
 # ================================================================ fades
 func fade(mid: Callable, done := Callable()) -> void:
-	if game.instant:
+	if game.instant or game.skip_fx:
 		mid.call()
 		if done.is_valid(): done.call()
 		return
@@ -164,7 +164,7 @@ func fade(mid: Callable, done := Callable()) -> void:
 ## The tasteful fade for the family scene: the lights go down, little hearts float up, and
 ## the screen goes softly dark.
 func heart_fade(then: Callable) -> void:
-	if game.instant:
+	if game.instant or game.skip_fx:
 		then.call()
 		return
 	fader.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -258,8 +258,15 @@ func _open_dlg() -> void:
 func _close_dlg() -> void:
 	dlg_wrap.visible = false
 	hud._modals.erase(dlg_wrap)
-	for c in dlg_opts.get_children(): c.queue_free()
+	_clear_opts()
 	_text_input = null
+
+## Removes the old answer buttons right away (not at the end of the frame), so a quick
+## second click can never hit a stale option from the previous question.
+func _clear_opts() -> void:
+	for c in dlg_opts.get_children():
+		dlg_opts.remove_child(c)
+		c.queue_free()
 
 func is_open() -> bool:
 	return dlg_wrap.visible
@@ -284,7 +291,7 @@ func say(lines: Array, done := Callable()) -> void:
 	_next()
 
 func _next() -> void:
-	for c in dlg_opts.get_children(): c.queue_free()
+	_clear_opts()
 	if _lines.is_empty():
 		_close_dlg()
 		var cb := _done
@@ -387,7 +394,9 @@ func _shop_header(id: String, greet: String, v: VBoxContainer) -> void:
 func _wallet_lbl() -> Label:
 	var l := UI.label(G.yen(Save.wallet), 26, UI.PLUM, UI.font_display)
 	l.set_meta("wallet", true)
-	Save.changed.connect(func(): if is_instance_valid(l): l.text = G.yen(Save.wallet))
+	var cb := func(): l.text = G.yen(Save.wallet)
+	Save.changed.connect(cb)
+	l.tree_exiting.connect(func(): Save.changed.disconnect(cb))
 	return l
 
 func _buy(price: int) -> bool:
@@ -638,16 +647,19 @@ static func _swatch(c: Color) -> Texture2D:
 
 # ================================================================ character look (creator, boutique, wardrobe)
 func _look_editor(look: Dictionary, v: VBoxContainer, on_change: Callable, skin := true) -> void:
-	var rows := [["style", "Hair", Chibi.STYLES], ["hair", "Hair colour", Chibi.HAIRS], ["shirt", "Top", Chibi.SHIRTS], ["pants", "Bottoms", Chibi.PANTS],
-		["acc", "Accessory", ["", "bow", "flower", "beret", "glasses"]]]
-	if skin: rows.push_front(["skin", "Skin", Chibi.SKINS])
+	if not look.has("body"): look.body = Chibi.body_of(look)
+	if not look.has("bottom"): look.bottom = "pants"
+	var rows := [["body", "Body", ["f", "m"]], ["style", "Hair", Chibi.STYLES], ["hair", "Hair colour", Chibi.HAIRS], ["shirt", "Top", Chibi.SHIRTS],
+		["bottom", "Bottoms", Chibi.BOTTOMS], ["pants", "Bottoms colour", Chibi.PANTS], ["acc", "Accessory", ["", "bow", "flower", "beret", "glasses"]]]
+	if skin: rows.insert(1, ["skin", "Skin", Chibi.SKINS])
+	var names := {"f": "Feminine", "m": "Masculine", "pants": "Trousers", "shorts": "Shorts", "skirt": "Skirt", "dress": "Dress", "": "None"}
 	for r in rows:
 		var field: String = r[0]
 		var h := HFlowContainer.new()
 		h.add_theme_constant_override("h_separation", 5)
 		h.add_theme_constant_override("v_separation", 5)
 		var l := UI.label(r[1], 18, UI.PLUM, UI.font_xbold)
-		l.custom_minimum_size.x = 120
+		l.custom_minimum_size.x = 150
 		h.add_child(l)
 		for o in r[2]:
 			var val: String = o.to_html(false) if o is Color else String(o)
@@ -659,7 +671,7 @@ func _look_editor(look: Dictionary, v: VBoxContainer, on_change: Callable, skin 
 				b.focus_mode = Control.FOCUS_NONE
 				b.custom_minimum_size = Vector2(44, 44)
 			else:
-				b = UI.button(val.capitalize() if val != "" else "None", "Ghost", Callable(), 16)
+				b = UI.button(names.get(val, val.capitalize()), "Ghost", Callable(), 16)
 			b.toggle_mode = true
 			b.button_pressed = String(look.get(field, "")).to_lower() == val.to_lower()
 			b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -933,26 +945,70 @@ func open_newspaper(reviews: Array) -> void:
 	(pr[2] as Button).pressed.connect(func(): hud.close_modal(mh.w))
 	Sfx.play("fwip" if Sfx.has("fwip") else "pop")
 
+## The cheat menu: every cheat as a button (toggles light up), plus a box for typing codes.
 func open_console() -> void:
-	var pr := hud._panel("Cheat console", "Type a code and press Enter", 720)
+	if hud.modal_open() and hud._modals.size() and hud._modals.back().has_meta("cheats"): return
+	var pr := hud._panel("Cheat menu", "Shh… nobody will know. Tap a cheat, or type its code below.", 1180)
 	var v: VBoxContainer = pr[1]
+	var top := UI.hbox(10)
 	var line := LineEdit.new()
-	line.placeholder_text = "e.g. kaching"
-	line.custom_minimum_size = Vector2(0, 56)
-	line.add_theme_font_size_override("font_size", 26)
-	v.add_child(line)
-	var out := UI.label("", 20, UI.SAKURA_D, UI.font_xbold)
-	v.add_child(out)
-	var list := ""
-	for k in Life.CHEATS: list += "[b]%s[/b] %s   " % [k, Life.CHEATS[k]]
-	v.add_child(UI.rich("[color=#7D6283]" + list + "[/color]", 17))
+	line.placeholder_text = "Type a code, e.g. kaching"
+	line.custom_minimum_size = Vector2(420, 52)
+	line.add_theme_font_size_override("font_size", 22)
+	top.add_child(line)
+	var out := UI.label("", 21, UI.SAKURA_D, UI.font_xbold)
+	out.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(out)
+	v.add_child(top)
+	var body := UI.vbox(8)
+	body.custom_minimum_size.x = 1120
+	var sc := ScrollContainer.new()
+	sc.custom_minimum_size = Vector2(1140, 560)
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	sc.add_child(body)
+	v.add_child(sc)
+	var buttons := {}
+	var refresh := func():
+		for code in buttons:
+			var b: Button = buttons[code]
+			var on := Life.cheat_on(code)
+			b.theme_type_variation = "Mint" if on else "Ghost"
+			b.text = Life.CHEATS[code][0] + ("  ✓" if on else "")
+	var run := func(code: String):
+		var msg: String = game.life.cheat(code)
+		out.text = msg
+		hud.toast(msg)
+		refresh.call()
+	var cats := ["Money", "Cooking", "Café", "You", "Time", "Love", "Stuff"]
+	for cat in cats:
+		var row := UI.hbox(12)
+		var cl := UI.label(cat, 22, UI.PLUM, UI.font_display)
+		cl.custom_minimum_size.x = 110
+		row.add_child(cl)
+		var flow := HFlowContainer.new()
+		flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		flow.add_theme_constant_override("h_separation", 8)
+		flow.add_theme_constant_override("v_separation", 8)
+		row.add_child(flow)
+		for code in Life.CHEATS:
+			var d: Array = Life.CHEATS[code]
+			if d[1] != cat: continue
+			var cc: String = code
+			var b := UI.button(d[0], "Ghost", func(): run.call(cc), 18)
+			b.tooltip_text = "%s  (code: %s)%s" % [d[2], code, "  · toggle" if d[3] else ""]
+			b.custom_minimum_size = Vector2(150, 48)
+			flow.add_child(b)
+			buttons[code] = b
+		body.add_child(row)
+	refresh.call()
 	line.text_submitted.connect(func(t):
 		out.text = game.life.cheat(t)
-		line.text = "")
+		line.text = ""
+		refresh.call())
 	var mh := {}
 	mh.w = hud._modal(pr[0])
+	mh.w.set_meta("cheats", true)
 	(pr[2] as Button).pressed.connect(func(): hud.close_modal(mh.w))
-	line.grab_focus.call_deferred()
 
 # ================================================================ edit mode panel
 func _build_edit() -> void:

@@ -21,6 +21,10 @@ func _ready() -> void:
 		var gp: Node = load("res://tests/test_gameplay.gd").new()
 		add_child(gp)
 		await gp.run(self)
+	if ResourceLoader.exists("res://tests/test_playthrough.gd") and not OS.get_cmdline_user_args().has("--quick"):
+		var pt: Node = load("res://tests/test_playthrough.gd").new()
+		add_child(pt)
+		await pt.run(self)
 	print("\n%d passed, %d failed (%d ms)" % [passed, failed, Time.get_ticks_msec() - t0])
 	get_tree().quit(1 if failed else 0)
 

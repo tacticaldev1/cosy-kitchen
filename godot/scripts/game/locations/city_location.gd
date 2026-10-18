@@ -136,8 +136,9 @@ func _build_people() -> void:
 	for id in People.NPCS:
 		var d: Dictionary = People.NPCS[id]
 		var c := make_person(id, d.look, d.name)
-		c.global_position = room.mark("spot_" + d.spot)
-		c.set_meta("home_spot", room.mark("spot_" + d.spot))
+		var spot := nav.nearest_free(room.mark("spot_" + d.spot))
+		c.global_position = spot
+		c.set_meta("home_spot", spot)
 		c.set_meta("busy", true)
 		people[id] = c
 	# Yuki's easel
@@ -256,6 +257,7 @@ func tick(dt: float) -> void:
 		var spot: Vector3 = c.get_meta("home_spot")
 		if not c.walking and c.global_position.distance_to(spot) > 0.3:
 			c.walk_path(nav.path(c.global_position, spot))
+			c.set_meta("pause", 2.0)  # don't re-plan every frame if the spot can't quite be reached
 		elif not c.walking:
 			c.rotation.y = lerp_angle(c.rotation.y, 0.0 if id != "yuki" else -0.6, minf(1.0, dt * 3.0))
 	if _wedding:
@@ -279,10 +281,10 @@ func end_couple() -> void:
 	if _couple == "": return
 	var c: Chibi = people[_couple]
 	c.stand_up()
-	c.global_position = Vector3(-3.25, 0, 5.4)
+	c.global_position = nav.nearest_free(Vector3(-3.25, 0, 5.3))
 	c.set_meta("pause", 3.0)
 	_couple = ""
-	game.player.global_position = Vector3(-3.95, 0, 5.4)
+	game.player.global_position = nav.nearest_free(Vector3(-3.95, 0, 5.3))
 
 ## The wedding at the fountain: the whole town gathers under the cherry blossoms.
 func wedding(on: bool) -> void:

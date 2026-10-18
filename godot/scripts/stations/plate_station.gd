@@ -8,7 +8,7 @@ var sparkle: CPUParticles3D
 var bell: Node3D
 
 func _init() -> void:
-	super("plate", "Plate", 4)
+	super("plate", "Plate", 6)  # some dishes (tacos, burgers…) bring five things together
 	item_scale = 1.15
 
 func attach(mo: Node3D) -> void:
@@ -21,6 +21,7 @@ func attach(mo: Node3D) -> void:
 func slot(i: int, n: int) -> Vector3:
 	if n == 1: return Vector3.ZERO
 	if n == 2: return [Vector3(-0.08, 0, 0), Vector3(0.08, 0, 0)][i]
+	if n > 4: return Vector3(-0.1 + (i % 3) * 0.1, 0, -0.05 + (i / 3) * 0.11)
 	return [Vector3(-0.08, 0, -0.05), Vector3(0.08, 0, -0.05), Vector3(-0.08, 0, 0.07), Vector3(0.08, 0, 0.07)][i % 4]
 
 func live() -> Dictionary:

@@ -27,7 +27,8 @@ How to play:
 - In town: Kai's Market (cheap pantry stock), the Home Store (furniture, wall and floor themes), the Boutique, Hana's Flowers, Ren's Books and Kobayashi Jewels. Use **Edit mode** (pencil button) to arrange furniture in the café or at home.
 - Chat with Hana, Ren, Kai and Yuki, give gifts, go on dates, become partners, propose with a ring and get married. With a double bed and a crib at home, you can start a family.
 - Sleep in your bed to end the day. Stay up past 2am and you'll faint!
-- Cheats: press `` ` `` (backtick) for the cheat console, or type a code in Settings. Try `kaching`, `motherlode`, `cookbook`, `fivestars`, `lovebirds`, `nap`, `timeskip`, `freedecor`, `storkdelivery`.
+- Make your chef feminine or masculine, with trousers, shorts, a skirt or a dress, and change it any time at the Boutique or your wardrobe.
+- Cheats: press `` ` `` (backtick) or open Settings → **Cheat menu** for 28 cheats in seven groups (money, cooking, café, you, time, love, stuff), including toggles like endless energy, speedy shoes, free ingredients and patient customers. You can also type codes like `kaching`, `millionaire`, `cookbook`, `fivestars`, `lovebirds`, `quickwedding` or `storkdelivery`.
 
 Your progress saves automatically.
 

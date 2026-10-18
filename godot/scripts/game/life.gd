@@ -20,7 +20,7 @@ func _init() -> void:
 func tick(dt: float) -> void:
 	if game.paused() or game.cutscene: return
 	Save.minute += dt * MIN_PER_SEC
-	Save.energy = maxf(0.0, Save.energy - dt * 0.012)
+	if not cheat_on("tireless"): Save.energy = maxf(0.0, Save.energy - dt * 0.012)
 	var h := int(Save.minute / 15.0)
 	if h != _hour_shown:
 		_hour_shown = h
@@ -40,6 +40,7 @@ func is_night() -> bool:
 	return Save.minute >= 20 * 60 or Save.minute < 6 * 60
 
 func use_energy(x: float) -> void:
+	if cheat_on("tireless"): return
 	Save.energy = clampf(Save.energy - x, 0.0, 100.0)
 	if Save.energy < 15.0 and not game.has_meta("low_e"):
 		game.set_meta("low_e", true)
@@ -50,7 +51,7 @@ func eat(x: float) -> void:
 	if Save.energy > 20.0 and game.has_meta("low_e"): game.remove_meta("low_e")
 
 func walk_speed() -> float:
-	return 2.0 if Save.energy > 15.0 else 1.4
+	return (2.0 if Save.energy > 15.0 else 1.4) * (1.8 if cheat_on("speedy") else 1.0)
 
 func skip_time(minutes: float) -> void:
 	Save.minute = minf(Save.minute + minutes, PASS_OUT - 1.0)
@@ -278,9 +279,11 @@ func start_family() -> void:
 			game.hud.say([["", "The next morning…"], ["", "A few weeks later, the doctor smiles: you're expecting a baby! ♥ (due in 3 days)"]], func(): morning())))
 
 func birth() -> void:
-	game.hud.say([["", "Today's the day! After a long, long night at Hoshizora Clinic…"], ["", "A healthy, beautiful baby is born. ♥"]], func():
-		game.hud.ask_text("What will you name your baby?", ["Sora", "Hina", "Haru", "Mio", "Riku", "Aoi"][rng.randi() % 6], func(nm: String):
-			var look := _kid_look()
+	var look := _kid_look()
+	var girl: bool = look.body == "f"
+	var names: Array = ["Hina", "Mio", "Sakura", "Yui", "Aoi", "Momo"] if girl else ["Sora", "Haru", "Riku", "Ren", "Taichi", "Kota"]
+	game.hud.say([["", "Today's the day! After a long, long night at Hoshizora Clinic…"], ["", "It's a %s! A healthy, beautiful baby %s. ♥" % ["girl" if girl else "boy", "girl" if girl else "boy"]]], func():
+		game.hud.ask_text("What will you name your baby %s?" % ("girl" if girl else "boy"), names[rng.randi() % names.size()], func(nm: String):
 			Save.family.kids.append({"name": nm, "born": Save.day, "look": look})
 			Save.family.expecting = -1
 			flag("baby")
@@ -293,9 +296,10 @@ func birth() -> void:
 func _kid_look() -> Dictionary:
 	var a: Dictionary = Save.player_look
 	var b: Dictionary = People.look_of(Save.partner)
-	return {"skin": a.get("skin", "FFE2D2") if rng.randf() < 0.5 else b.get("skin", "FFE2D2"), "hair": a.get("hair", "4B2E5A") if rng.randf() < 0.5 else b.get("hair", "4B2E5A"),
-		"shirt": Chibi.SHIRTS[rng.randi() % Chibi.SHIRTS.size()].to_html(false), "pants": Chibi.PANTS[rng.randi() % Chibi.PANTS.size()].to_html(false),
-		"style": Chibi.STYLES[rng.randi() % Chibi.STYLES.size()], "acc": ""}
+	var lk := Chibi.random_look(rng)
+	lk.skin = a.get("skin", "FFE2D2") if rng.randf() < 0.5 else b.get("skin", "FFE2D2")
+	lk.hair = a.get("hair", "4B2E5A") if rng.randf() < 0.5 else b.get("hair", "4B2E5A")
+	return lk
 
 static func kid_stage(k: Dictionary) -> String:
 	var age: int = Save.day - int(k.born)
@@ -347,45 +351,110 @@ func _talk_keeper(id: String) -> void:
 			game.open_shop_ui(id)
 
 # ---------------------------------------------------------------- cheats
+## Every cheat: code -> [label, category, description, toggle?]. Toggles stay on until switched off.
 const CHEATS := {
-	"kaching": "+¥10,000", "motherlode": "+¥100,000", "cookbook": "Discover every recipe", "fivestars": "5-star café rating",
-	"lovebirds": "Max hearts with everyone", "nap": "Full energy", "timeskip": "Skip 2 hours", "freedecor": "One of every furniture item",
-	"storkdelivery": "A baby arrives (if married)", "sunnyday": "Sunny weather", "rainyday": "Rainy weather", "nextchapter": "Finish the story chapter",
+	"kaching": ["+¥10,000", "Money", "A little pocket money", false],
+	"motherlode": ["+¥100,000", "Money", "A lot of pocket money", false],
+	"millionaire": ["+¥1,000,000", "Money", "Never worry about money again", false],
+	"cookbook": ["Every recipe", "Cooking", "Stamp all 100 recipes in your book", false],
+	"pantrypower": ["Full pantry", "Cooking", "20 of every ingredient in your pantry", false],
+	"freefood": ["Free ingredients", "Cooking", "The fridge never charges you", true],
+	"chefmaster": ["Max chef level", "Cooking", "Jump to chef level 10", false],
+	"fivestars": ["5-star café", "Café", "Top café rating", false],
+	"rushhour": ["Rush hour", "Café", "Three customers walk in now (café open)", false],
+	"criticnow": ["Critic visit", "Café", "A food critic walks in now (café open)", false],
+	"zen": ["Patient customers", "Café", "Customers never get tired of waiting", true],
+	"nap": ["Full energy", "You", "Feel fully rested", false],
+	"tireless": ["Endless energy", "You", "Never get tired", true],
+	"speedy": ["Speedy shoes", "You", "Walk much faster", true],
+	"timeskip": ["+2 hours", "Time", "Skip ahead two hours", false],
+	"morning": ["Morning", "Time", "Jump to 8:00 am", false],
+	"evening": ["Evening", "Time", "Jump to 6:00 pm", false],
+	"night": ["Night", "Time", "Jump to 9:00 pm", false],
+	"sunnyday": ["Sunny", "Time", "Sunny weather", false],
+	"rainyday": ["Rainy", "Time", "Rainy weather", false],
+	"lovebirds": ["Max hearts", "Love", "Everyone in town adores you", false],
+	"giftbag": ["Gift bag", "Love", "One of every gift", false],
+	"shinyring": ["Engagement ring", "Love", "A ring for a proposal", false],
+	"quickwedding": ["Instant wedding", "Love", "Marry your partner right now", false],
+	"storkdelivery": ["Baby now", "Love", "A baby arrives (if married)", false],
+	"growup": ["Kids grow up", "Love", "Your kids age by a week", false],
+	"freedecor": ["All furniture", "Stuff", "One of every furniture item in storage", false],
+	"nextchapter": ["Next chapter", "Stuff", "Skip to the next story chapter", false],
 }
+
+static func cheat_on(code: String) -> bool:
+	return bool(Save.flags.get("cheat_" + code, false))
 
 func cheat(code: String) -> String:
 	code = code.strip_edges().to_lower().replace(" ", "")
+	if not CHEATS.has(code): return "Unknown code"
 	var msg := ""
-	match code:
-		"kaching": Save.wallet += 10000; msg = "Ka-ching! +¥10,000"
-		"motherlode": Save.wallet += 100000; msg = "Motherlode! +¥100,000"
-		"cookbook":
-			for r in G.RECIPES:
-				if not Save.is_found(r.id): Save.mark_found(r.id)
-			msg = "Every recipe is in your book"
-		"fivestars": Save.reputation = 5.0; msg = "Your café is now rated 5 stars"
-		"lovebirds":
-			for k in People.NPCS: Save.add_hearts(k, 10.0)
-			msg = "Everyone adores you"
-		"nap": Save.energy = 100.0; msg = "Fully rested!"
-		"timeskip": skip_time(120.0); msg = "Two hours later…"
-		"freedecor":
-			for id in Furni.CATALOG: Save.furni_inv[id] = int(Save.furni_inv.get(id, 0)) + 1
-			msg = "One of everything is in your storage (Edit mode)"
-		"storkdelivery":
-			if not Save.married: return "You need to be married first"
-			Save.family.expecting = Save.day
-			game.after(0.3, birth)
-			msg = "The stork is on its way!"
-		"sunnyday": Save.weather = "sun"; msg = "The sun comes out"
-		"rainyday": Save.weather = "rain"; msg = "Pitter patter…"
-		"nextchapter":
-			if not Story.active(): return "No story chapter is active"
-			Save.chapter += 1
-			msg = "Skipped to the next chapter"
-		_:
-			return "Unknown code"
+	if CHEATS[code][3]:
+		var on := not cheat_on(code)
+		Save.flags["cheat_" + code] = on
+		msg = "%s %s" % [CHEATS[code][0], "ON" if on else "OFF"]
+	else:
+		match code:
+			"kaching": Save.wallet += 10000; msg = "Ka-ching! +¥10,000"
+			"motherlode": Save.wallet += 100000; msg = "Motherlode! +¥100,000"
+			"millionaire": Save.wallet += 1000000; msg = "You're a millionaire!"
+			"cookbook":
+				for r in G.RECIPES:
+					if not Save.is_found(r.id): Save.mark_found(r.id)
+				msg = "Every recipe is in your book"
+			"pantrypower":
+				for k in G.ING_KEYS: Save.pantry[k] = maxi(20, int(Save.pantry.get(k, 0)))
+				msg = "Your pantry is overflowing"
+			"chefmaster": Save.stars_total = maxi(Save.stars_total, 600); msg = "Chef level 10!"
+			"fivestars": Save.reputation = 5.0; msg = "Your café is now rated 5 stars"
+			"rushhour", "criticnow":
+				if not game.shop.open: return "Open the café first"
+				if code == "criticnow": game.shop.force_critic = true
+				for i in (3 if code == "rushhour" else 1): game.shop.spawn()
+				msg = "Here they come!"
+			"nap": Save.energy = 100.0; msg = "Fully rested!"
+			"timeskip": skip_time(120.0); msg = "Two hours later…"
+			"morning": Save.minute = 8 * 60.0; msg = "Good morning!"
+			"evening": Save.minute = maxf(Save.minute, 18 * 60.0); msg = "The evening lights come on"
+			"night": Save.minute = maxf(Save.minute, 21 * 60.0); msg = "A starry night"
+			"sunnyday": Save.weather = "sun"; msg = "The sun comes out"
+			"rainyday": Save.weather = "rain"; msg = "Pitter patter…"
+			"lovebirds":
+				for k in People.NPCS: Save.add_hearts(k, 10.0)
+				msg = "Everyone adores you"
+			"giftbag":
+				for g in People.GIFTS: Save.gifts[g] = int(Save.gifts.get(g, 0)) + 1
+				msg = "One of every gift is in your bag"
+			"shinyring": Save.has_ring = true; msg = "A sparkly ring is in your pocket"
+			"quickwedding":
+				if Save.partner == "": return "You need a partner first"
+				if Save.married: return "You're already married!"
+				Save.married = true
+				Save.wedding_day = Save.day
+				Save.has_ring = false
+				Save.flags.erase("wedding")
+				game.home.refresh_family()
+				msg = "Just married! ♥"
+			"storkdelivery":
+				if not Save.married: return "You need to be married first"
+				Save.family.expecting = Save.day
+				game.after(0.3, birth)
+				msg = "The stork is on its way!"
+			"growup":
+				if Save.family.kids.is_empty(): return "No kids yet"
+				for k in Save.family.kids: k.born = int(k.born) - 7
+				game.home.refresh_family()
+				msg = "Look how they've grown!"
+			"freedecor":
+				for id in Furni.CATALOG: Save.furni_inv[id] = int(Save.furni_inv.get(id, 0)) + 1
+				msg = "One of everything is in your storage (Edit mode)"
+			"nextchapter":
+				if not Story.active(): return "No story chapter is active"
+				Save.chapter += 1
+				msg = "Skipped to the next chapter"
 	Save.cheats_used = true
+	Sfx.set_ambience(Save.weather == "rain" and Save.settings.get("rain", true))
 	if game.loc: game.loc.set_hour(Save.hour())
 	Sfx.play("sparkle")
 	Save.save()

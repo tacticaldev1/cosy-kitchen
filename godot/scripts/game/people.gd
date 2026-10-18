@@ -6,29 +6,29 @@ extends RefCounted
 ## Dateable townsfolk. spot = where they hang out in town (a city mark).
 const NPCS := {
 	"hana": {"name": "Hana", "job": "the florist", "shop": "florist", "spot": "hana", "fav": "Matcha Latte",
-		"look": {"skin": "FFE6D6", "hair": "2E3A5A", "shirt": "B7E3A0", "pants": "FFC2D6", "style": "buns", "acc": "flower"},
+		"look": {"body": "f", "skin": "FFE6D6", "hair": "2E3A5A", "shirt": "B7E3A0", "pants": "FFC2D6", "style": "buns", "bottom": "skirt", "acc": "flower"},
 		"loves": ["roses", "art_book"], "likes": ["tulips", "sweets", "necklace", "tea_set"],
 		"bio": "Runs the flower shop. Knows the meaning of every flower and hums while she works."},
 	"ren": {"name": "Ren", "job": "the bookseller", "shop": "bookshop", "spot": "ren", "fav": "Shoyu Ramen",
-		"look": {"skin": "F2CDB0", "hair": "3A2A2A", "shirt": "A9C8FF", "pants": "3B4A7A", "style": "short", "acc": "glasses"},
+		"look": {"body": "m", "skin": "F2CDB0", "hair": "3A2A2A", "shirt": "A9C8FF", "pants": "3B4A7A", "style": "short", "bottom": "pants", "acc": "glasses"},
 		"loves": ["poetry", "tea_set"], "likes": ["novel", "manga", "sweets", "bracelet"],
 		"bio": "Quiet, kind and always reading. Writes poems he never shows anyone."},
 	"kai": {"name": "Kai", "job": "the market grocer", "shop": "market", "spot": "kai", "fav": "Katsu Curry",
-		"look": {"skin": "E8B896", "hair": "8A4A2A", "shirt": "FFB86A", "pants": "5A4A70", "style": "spiky", "acc": ""},
+		"look": {"body": "m", "skin": "E8B896", "hair": "8A4A2A", "shirt": "FFB86A", "pants": "5A4A70", "style": "spiky", "bottom": "shorts", "acc": ""},
 		"loves": ["sunflower", "manga"], "likes": ["sweets", "bracelet", "novel"],
 		"bio": "Wakes at four to pick the freshest vegetables. Laughs louder than anyone in town."},
 	"yuki": {"name": "Yuki", "job": "a painter", "shop": "", "spot": "yuki", "fav": "Fluffy Pancakes",
-		"look": {"skin": "FFE2D2", "hair": "F2F2F8", "shirt": "C3A6FF", "pants": "BDEBDD", "style": "long", "acc": "beret"},
+		"look": {"body": "f", "skin": "FFE2D2", "hair": "F2F2F8", "shirt": "C3A6FF", "pants": "BDEBDD", "style": "long", "bottom": "dress", "acc": "beret"},
 		"loves": ["art_book", "bouquet"], "likes": ["tulips", "poetry", "necklace", "sweets"],
 		"bio": "Paints the cherry trees in the park every day, in every weather."},
 }
 
 ## Shopkeepers you buy from (not dateable).
 const KEEPERS := {
-	"homestore": {"name": "Mr. Tanaka", "look": {"skin": "F2CDB0", "hair": "C8C8D8", "shirt": "E8A04A", "pants": "3B4A7A", "style": "short", "acc": "glasses"}},
-	"boutique": {"name": "Mimi", "look": {"skin": "FFEADF", "hair": "F2B8C8", "shirt": "8B7BC9", "pants": "2E2A3A", "style": "twin", "acc": "bow"}},
-	"jeweler": {"name": "Mrs. Kobayashi", "look": {"skin": "FFE2D2", "hair": "6A4AC8", "shirt": "6A8AD8", "pants": "2E2A3A", "style": "bob", "acc": "glasses"}},
-	"jiro": {"name": "Grandpa Jiro", "look": {"skin": "E8B896", "hair": "F2F2F8", "shirt": "8A6A4A", "pants": "5A4A70", "style": "short", "acc": "beret"}},
+	"homestore": {"name": "Mr. Tanaka", "look": {"body": "m", "skin": "F2CDB0", "hair": "C8C8D8", "shirt": "E8A04A", "pants": "3B4A7A", "style": "short", "acc": "glasses"}},
+	"boutique": {"name": "Mimi", "look": {"body": "f", "bottom": "skirt", "skin": "FFEADF", "hair": "F2B8C8", "shirt": "8B7BC9", "pants": "2E2A3A", "style": "twin", "acc": "bow"}},
+	"jeweler": {"name": "Mrs. Kobayashi", "look": {"body": "f", "bottom": "dress", "skin": "FFE2D2", "hair": "6A4AC8", "shirt": "6A8AD8", "pants": "2E2A3A", "style": "bob", "acc": "glasses"}},
+	"jiro": {"name": "Grandpa Jiro", "look": {"body": "m", "skin": "E8B896", "hair": "F2F2F8", "shirt": "8A6A4A", "pants": "5A4A70", "style": "short", "acc": "beret"}},
 }
 
 ## gift id: [name, price, sold at, colour]

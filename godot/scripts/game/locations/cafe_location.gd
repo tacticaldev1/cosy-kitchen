@@ -142,7 +142,8 @@ func seats() -> Array:
 	var out: Array = []
 	for i in 3:
 		if room.has_mark("bar_%d" % i):
-			out.append({"pos": room.mark("bar_%d" % i), "yaw": -PI * 0.5, "h": 0.6, "id": "bar"})
+			var p := room.mark("bar_%d" % i)
+			out.append({"pos": p, "yaw": -PI * 0.5, "h": 0.6, "id": "bar", "approach": p + Vector3(0.55, 0, 0)})
 	out.append_array(furni.seats())
 	return out
 

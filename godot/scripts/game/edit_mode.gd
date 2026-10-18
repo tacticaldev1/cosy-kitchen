@@ -102,11 +102,24 @@ func _place() -> void:
 	if held.is_empty() or not _ok:
 		if not held.is_empty(): Sfx.play("sad" if Sfx.has("sad") else "tick")
 		return
+	var placed: Dictionary
+	var old := {}
 	if held.item.size():
+		old = {"x": held.item.x, "z": held.item.z, "rot": held.item.rot}
 		held.item.node.visible = true
 		layer.move(held.item, _at.x, _at.z, held.rot)
+		placed = held.item
 	else:
-		layer.add(held.id, _at.x, _at.z, held.rot)
+		placed = layer.add(held.id, _at.x, _at.z, held.rot)
+	# never let furniture wall off a door, a station, the bed or part of the room
+	if blocks_paths():
+		if old.size(): layer.move(placed, old.x, old.z, old.rot)
+		else: layer.remove(placed)
+		if held.item.size(): held.item.node.visible = false
+		game.toast("That would block the way! Leave room to walk around")
+		Sfx.play("sad" if Sfx.has("sad") else "tick")
+		return
+	if old.is_empty():
 		Save.furni_inv[held.id] = int(Save.furni_inv.get(held.id, 0)) - 1
 		if Save.furni_inv[held.id] <= 0: Save.furni_inv.erase(held.id)
 	held.node.queue_free()
@@ -118,12 +131,27 @@ func _place() -> void:
 	Save.save()
 	game.hud.edit_changed()
 
+## True if the room has spots you can't walk to (checked after every placement).
+func blocks_paths() -> bool:
+	var l := game.loc
+	var pts := {}
+	for it in l.interacts: pts[it.id] = it.pos
+	if l is CafeLocation:
+		for k in (l as CafeLocation).stand: pts["stand_" + k] = (l as CafeLocation).stand[k]
+	pts["you"] = game.player.global_position
+	var problems := NavReport.check(l, l.entry_point("door"), pts).filter(func(p): return not String(p).contains("free cells"))
+	return problems.size() > 0
+
 func _update_ghost(p: Vector3) -> void:
 	if held.is_empty(): return
 	var s := FurnitureLayer.size_of(held.id, held.rot)
 	# snap so the footprint edges sit on the grid
 	var x := snappedf(p.x - s.x * 0.5, SNAP) + s.x * 0.5
 	var z := snappedf(p.z - s.y * 0.5, SNAP) + s.y * 0.5
+	# keep it flush inside the room when you drag it against a wall
+	var a := layer.area
+	x = clampf(x, a.position.x + s.x * 0.5, a.end.x - s.x * 0.5)
+	z = clampf(z, a.position.y + s.y * 0.5, a.end.y - s.y * 0.5)
 	_at = Vector3(x, 0, z)
 	held.node.position = layer.to_local(_at)
 	held.node.rotation.y = held.rot * PI * 0.5

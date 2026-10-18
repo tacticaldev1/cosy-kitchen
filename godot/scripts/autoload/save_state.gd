@@ -84,6 +84,19 @@ func load_game() -> void:
 	for k in s: settings[k] = s[k]
 	if int(d.get("version", 1)) < 3:
 		_migrate_v2(d)
+	_fix_v300_layout()
+
+## v3.0.0's starting tables crowded the bar stools; move them if they're still where we put them.
+func _fix_v300_layout() -> void:
+	var cafe: Array = layouts.get("cafe", [])
+	var old := [[1.0, -1.9], [2.9, -1.9], [1.0, 0.1]]
+	var new_ := [[1.4, -1.5], [3.0, -1.5], [1.4, 0.9]]
+	for it in cafe:
+		for i in 3:
+			if it.id == "table2" and absf(float(it.x) - old[i][0]) < 0.01 and absf(float(it.z) - old[i][1]) < 0.01 and int(it.rot) == 0:
+				it.x = new_[i][0]
+				it.z = new_[i][1]
+				it.rot = 1
 
 ## Players from v2 keep their recipes, money and stars; their old café decorations become
 ## furniture in the new café, and they start the new life in story mode on the day they were on.
@@ -162,7 +175,7 @@ func new_game(m: String, name_: String, look: Dictionary) -> void:
 	reputation = 2.5 if m == "freeplay" else 1.0
 	chapter = 0 if m == "story" else -1
 	layouts = {
-		"cafe": [{"id": "table2", "x": 1.0, "z": -1.9, "rot": 0}, {"id": "table2", "x": 2.9, "z": -1.9, "rot": 0}, {"id": "table2", "x": 1.0, "z": 0.1, "rot": 0},
+		"cafe": [{"id": "table2", "x": 1.4, "z": -1.5, "rot": 1}, {"id": "table2", "x": 3.0, "z": -1.5, "rot": 1}, {"id": "table2", "x": 1.4, "z": 0.9, "rot": 1},
 			{"id": "plant", "x": 3.75, "z": -2.6, "rot": 0}, {"id": "rug", "x": 2.4, "z": 0.4, "rot": 0}],
 		"home": [{"id": "single_bed", "x": -2.95, "z": 1.3, "rot": 0}, {"id": "armchair", "x": 1.6, "z": -1.7, "rot": 0}, {"id": "rug", "x": 0.0, "z": 0.4, "rot": 0},
 			{"id": "lamp", "x": 2.95, "z": -2.2, "rot": 0}, {"id": "plant", "x": -1.0, "z": -2.3, "rot": 0}, {"id": "wardrobe", "x": 3.25, "z": -1.5, "rot": 3}],
