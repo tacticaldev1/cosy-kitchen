@@ -151,6 +151,20 @@ const SVG := {
 	"check": "<svg viewBox='0 0 32 32'><circle cx='16' cy='16' r='12' fill='#9FE6C6' stroke='#3B2340' stroke-width='2.6'/><path d='M10 16l4 4 8-9' fill='none' stroke='#3B2340' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>",
 	"rain": "<svg viewBox='0 0 32 32'><path d='M8 18a6 6 0 0 1 2-11.5A8 8 0 0 1 25 9a5 5 0 0 1-1 9.5z' fill='#CFEFFF' stroke='#3B2340' stroke-width='2.4' stroke-linejoin='round'/><path d='M11 22l-2 4M17 22l-2 4M23 22l-2 4' stroke='#7FA8E0' stroke-width='2.6' stroke-linecap='round'/></svg>",
 	"sign": "<svg viewBox='0 0 32 32'><path d='M10 4l6 5 6-5' fill='none' stroke='#6A3E20' stroke-width='2.2'/><rect x='4' y='9' width='24' height='18' rx='4' fill='#FFE3EC' stroke='#3B2340' stroke-width='2.6'/></svg>",
+	"hat": "<svg viewBox='0 0 32 32'><path d='M9 20c-4 0-6-3-5-6 1-3 4-4 6-3 1-4 4-6 6-6s5 2 6 6c2-1 5 0 6 3 1 3-1 6-5 6z' fill='#FFFFFF' stroke='#3B2340' stroke-width='2.4' stroke-linejoin='round'/><rect x='9' y='20' width='14' height='7' rx='2' fill='#FFFFFF' stroke='#3B2340' stroke-width='2.4'/></svg>",
+	"hat_off": "<svg viewBox='0 0 32 32'><path d='M9 20c-4 0-6-3-5-6 1-3 4-4 6-3 1-4 4-6 6-6s5 2 6 6c2-1 5 0 6 3 1 3-1 6-5 6z' fill='#EADBD0' stroke='#3B2340' stroke-opacity='0.35' stroke-width='2.4' stroke-linejoin='round'/><rect x='9' y='20' width='14' height='7' rx='2' fill='#EADBD0' stroke='#3B2340' stroke-opacity='0.35' stroke-width='2.4'/></svg>",
+	"bolt": "<svg viewBox='0 0 32 32'><path d='M18 3L7 18h8l-2 11 12-16h-8z' fill='#FFD24A' stroke='#3B2340' stroke-width='2.4' stroke-linejoin='round'/></svg>",
+	"sun": "<svg viewBox='0 0 32 32'><circle cx='16' cy='16' r='7' fill='#FFD24A' stroke='#3B2340' stroke-width='2.4'/><path d='M16 2v4M16 26v4M2 16h4M26 16h4M6 6l3 3M23 23l3 3M6 26l3-3M23 9l3-3' stroke='#FFB84A' stroke-width='2.6' stroke-linecap='round'/></svg>",
+	"moon": "<svg viewBox='0 0 32 32'><path d='M20 4a12 12 0 1 0 8 18A10 10 0 0 1 20 4z' fill='#FFE89A' stroke='#3B2340' stroke-width='2.4' stroke-linejoin='round'/></svg>",
+	"journal": "<svg viewBox='0 0 32 32'><rect x='6' y='3' width='20' height='26' rx='3' fill='#BDEBDD' stroke='#3B2340' stroke-width='2.6'/><path d='M11 10h10M11 15h10M11 20h6' stroke='#3B2340' stroke-width='2.4' stroke-linecap='round'/></svg>",
+	"map": "<svg viewBox='0 0 32 32'><path d='M4 7l8-3 8 3 8-3v21l-8 3-8-3-8 3z' fill='#FFF6D2' stroke='#3B2340' stroke-width='2.4' stroke-linejoin='round'/><path d='M12 4v21M20 7v21' stroke='#3B2340' stroke-width='2'/><circle cx='16' cy='14' r='2.6' fill='#FF7EA6'/></svg>",
+	"edit": "<svg viewBox='0 0 32 32'><path d='M6 26l2-7L21 6l5 5L13 24z' fill='#FFD24A' stroke='#3B2340' stroke-width='2.4' stroke-linejoin='round'/><path d='M18 9l5 5' stroke='#3B2340' stroke-width='2.4'/></svg>",
+	"bag": "<svg viewBox='0 0 32 32'><path d='M6 11h20l-2 17H8z' fill='#FFB86A' stroke='#3B2340' stroke-width='2.4' stroke-linejoin='round'/><path d='M11 13V9a5 5 0 0 1 10 0v4' fill='none' stroke='#3B2340' stroke-width='2.4' stroke-linecap='round'/></svg>",
+	"gift": "<svg viewBox='0 0 32 32'><rect x='5' y='12' width='22' height='16' rx='2' fill='#FF9EBB' stroke='#3B2340' stroke-width='2.4'/><rect x='3' y='8' width='26' height='6' rx='2' fill='#FFC2D6' stroke='#3B2340' stroke-width='2.4'/><path d='M16 8v20' stroke='#FFD24A' stroke-width='3'/></svg>",
+	"chat": "<svg viewBox='0 0 32 32'><path d='M5 6h22v15H14l-6 5v-5H5z' fill='#FFF8EE' stroke='#3B2340' stroke-width='2.4' stroke-linejoin='round'/><circle cx='11' cy='13.5' r='1.8' fill='#3B2340'/><circle cx='16' cy='13.5' r='1.8' fill='#3B2340'/><circle cx='21' cy='13.5' r='1.8' fill='#3B2340'/></svg>",
+	"baby": "<svg viewBox='0 0 32 32'><circle cx='16' cy='15' r='10' fill='#FFE2D2' stroke='#3B2340' stroke-width='2.4'/><circle cx='12.5' cy='15' r='1.6' fill='#3B2340'/><circle cx='19.5' cy='15' r='1.6' fill='#3B2340'/><path d='M14 19.5c1 1 3 1 4 0' fill='none' stroke='#3B2340' stroke-width='2' stroke-linecap='round'/><circle cx='10' cy='18' r='1.6' fill='#FF9EBB'/><circle cx='22' cy='18' r='1.6' fill='#FF9EBB'/></svg>",
+	"news": "<svg viewBox='0 0 32 32'><rect x='4' y='6' width='24' height='20' rx='2' fill='#FFFDF6' stroke='#3B2340' stroke-width='2.4'/><path d='M8 11h16M8 15h7M8 19h7M8 23h7' stroke='#3B2340' stroke-width='2' stroke-linecap='round'/><rect x='18' y='15' width='6' height='8' fill='#C3A6FF' stroke='#3B2340' stroke-width='1.6'/></svg>",
+	"door": "<svg viewBox='0 0 32 32'><rect x='8' y='3' width='16' height='26' rx='2' fill='#E8B87A' stroke='#3B2340' stroke-width='2.4'/><circle cx='20' cy='17' r='1.8' fill='#3B2340'/></svg>",
 }
 
 static func icon(name: String, size := 48) -> Texture2D:
@@ -234,11 +248,54 @@ static func rich(text: String, size := 24) -> RichTextLabel:
 	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return r
 
-static func stars(n: int, size := 40) -> HBoxContainer:
+static func stars(n: int, size := 40, of := 3) -> HBoxContainer:
 	var h := hbox(2)
-	for i in 3:
+	for i in of:
 		h.add_child(tex(icon("star" if i < n else "star_off", size), Vector2(size, size)))
 	return h
+
+## Recipe difficulty as 1..5 little chef hats.
+static func hats(n: int, size := 26) -> HBoxContainer:
+	var h := hbox(0)
+	for i in 5:
+		h.add_child(tex(icon("hat" if i < n else "hat_off", size), Vector2(size, size)))
+	h.tooltip_text = "Difficulty %d/5" % n
+	return h
+
+## A thin coloured bar (energy, hearts, patience).
+static func bar(v: float, col: Color, w := 120.0, h := 12.0) -> Control:
+	var c := Control.new()
+	c.custom_minimum_size = Vector2(w, h)
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var bg := Panel.new()
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.add_theme_stylebox_override("panel", box(Color(PLUM, 0.14), int(h * 0.5), 0, 0, Vector4.ZERO))
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	c.add_child(bg)
+	var f := Panel.new()
+	f.name = "Fill"
+	f.add_theme_stylebox_override("panel", box(col, int(h * 0.5), 0, 0, Vector4.ZERO))
+	f.size = Vector2(maxf(h, w * clampf(v, 0.0, 1.0)), h)
+	f.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	c.add_child(f)
+	c.set_meta("w", w)
+	return c
+
+static func set_bar(c: Control, v: float, col := Color.TRANSPARENT) -> void:
+	var f: Panel = c.get_node("Fill")
+	var w: float = c.get_meta("w", c.size.x)
+	f.size = Vector2(maxf(c.custom_minimum_size.y, w * clampf(v, 0.0, 1.0)), c.custom_minimum_size.y)
+	if col.a > 0.0: (f.get_theme_stylebox("panel") as StyleBoxFlat).bg_color = col
+
+## Hearts 0..10 shown as five hearts (half hearts dimmed).
+static func hearts(h: float, size := 24) -> HBoxContainer:
+	var row := hbox(0)
+	for i in 5:
+		var t := tex(icon("heart", size), Vector2(size, size))
+		var v := clampf(h / 2.0 - i, 0.0, 1.0)
+		t.modulate = Color(1, 1, 1, 1) if v >= 1.0 else Color(1, 1, 1, 0.55) if v >= 0.5 else Color(0.6, 0.55, 0.6, 0.3)
+		row.add_child(t)
+	return row
 
 static func pop_in(c: Control, from := 0.85) -> void:
 	c.pivot_offset = c.size * 0.5

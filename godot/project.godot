@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Cosy Kitchen"
-config/description="A cosy anime-style ASMR cooking café. Chop, stir, blend, boil, fry, bake and freeze your way through 100 recipes."
+config/description="A cosy anime-style café life sim. Cook 100 recipes, serve customers, impress critics, decorate, explore Hoshizora Town, fall in love and raise a family."
 config/version="2.1.0"
 config/github_repo="tacticaldev1/cosy-kitchen"
 run/main_scene="res://scenes/main.tscn"

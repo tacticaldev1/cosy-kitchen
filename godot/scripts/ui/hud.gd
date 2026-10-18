@@ -41,6 +41,7 @@ var _modals: Array = []
 var _book: BookPanel
 var _cache := {}
 var _fridge_cat := "fruit"
+var life: LifeUI
 
 func _ready() -> void:
 	layer = 5
@@ -59,6 +60,11 @@ func _ready() -> void:
 	fly_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(fly_layer)
 	_build_toast()
+	life = LifeUI.new()
+	life.hud = self
+	life.game = game
+	add_child(life)
+	life.build()
 	Save.changed.connect(_sync_top)
 	game.shop.changed.connect(_sync_orders)
 	_sync_top()
@@ -88,46 +94,37 @@ func _pill(icon_name: String, text: String, cb: Callable = Callable()) -> Array:
 	return [b, b]
 
 func _build_top() -> void:
-	var title := UI.vbox(-6)
-	title.position = Vector2(28, 14)
-	root.add_child(title)
-	var t := UI.title("Cosy Kitchen", 40)
-	t.add_theme_color_override("font_shadow_color", Color("FF7EA6"))
-	t.add_theme_constant_override("shadow_offset_y", 3)
-	t.add_theme_constant_override("shadow_offset_x", 0)
-	t.add_theme_color_override("font_outline_color", Color.WHITE)
-	t.add_theme_constant_override("outline_size", 10)
-	title.add_child(t)
-	var sub := UI.label("ほっこりキッチン", 17, UI.SAKURA_D, UI.font_xbold)
-	sub.add_theme_color_override("font_outline_color", Color.WHITE)
-	sub.add_theme_constant_override("outline_size", 6)
-	title.add_child(sub)
 	top_right = UI.hbox(10)
 	top_right.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	top_right.position = Vector2(-20, 16)
 	top_right.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	root.add_child(top_right)
-	var day := _pill("clock", "Day 1", func(): game.shop.toggle())
-	day_lbl = null
-	top_right.add_child(day[0])
-	_cache.day_btn = day[0]
+	var rate := _pill("star", "", func(): open_journal())
+	rate[0].tooltip_text = "Café rating (critics and happy customers raise it)"
+	top_right.add_child(rate[0])
+	_cache.rate_btn = rate[0]
 	var lv := Button.new()
 	lv.theme_type_variation = "Ghost"
 	lv.focus_mode = Control.FOCUS_NONE
-	lv.icon = UI.icon("star", 34)
-	lv.add_theme_font_size_override("font_size", 24)
-	lv.tooltip_text = "Café level: earn stars by serving customers"
+	lv.icon = UI.icon("hat", 34)
+	lv.add_theme_font_size_override("font_size", 22)
+	lv.tooltip_text = "Chef level: earn stars by serving customers"
 	top_right.add_child(lv)
 	_cache.lv_btn = lv
 	var coins := _pill("coin", "¥0")
 	top_right.add_child(coins[0])
 	_cache.coin_btn = coins[0]
 	var book := _pill("book", "0/100", func(): open_book())
+	book[0].tooltip_text = "Recipe book (B)"
 	top_right.add_child(book[0])
 	_cache.book_btn = book[0]
-	var deco := _pill("plant", "", func(): open_decor())
-	deco[0].tooltip_text = "Decorate the café"
-	top_right.add_child(deco[0])
+	var jr := _pill("journal", "", func(): open_journal())
+	jr[0].tooltip_text = "Journal: story, people, reviews, family (J)"
+	top_right.add_child(jr[0])
+	var ed := _pill("edit", "", func(): game.edit.stop() if game.edit.active else game.edit.start())
+	ed[0].tooltip_text = "Edit mode: arrange furniture"
+	top_right.add_child(ed[0])
+	_cache.edit_btn = ed[0]
 	var upd := UI.button("Update!", "Gold", func(): Updater.update_now(), 22)
 	upd.visible = false
 	upd.tooltip_text = "A new version of Cosy Kitchen is ready"
@@ -135,7 +132,7 @@ func _build_top() -> void:
 	_cache.upd_btn = upd
 	Updater.status_changed.connect(_sync_update)
 	var gear := _pill("gear", "", func(): open_settings())
-	gear[0].tooltip_text = "Settings"
+	gear[0].tooltip_text = "Settings (Esc)"
 	top_right.add_child(gear[0])
 
 func _sync_update() -> void:
@@ -162,18 +159,9 @@ func _sync_top() -> void:
 	(_cache.coin_btn as Button).add_theme_color_override("font_color", Color("C2415E") if Save.wallet < 0 else UI.PLUM)
 	(_cache.book_btn as Button).text = "%d/%d" % [Save.found_count(), G.RECIPES.size()]
 	var lp := Save.level_progress()
-	(_cache.lv_btn as Button).text = "Lv %d  %d/%d" % [Save.level(), lp.x, lp.y]
-	_sync_day()
-
-func _sync_day() -> void:
-	var b: Button = _cache.day_btn
-	if game.shop.open:
-		var h := 11.0 + game.shop.day_t * 10.0
-		var hh := int(h)
-		var mm := int((h - hh) * 60.0) / 15 * 15
-		b.text = "Day %d · %d:%02d%s · Close" % [Save.day, hh if hh <= 12 else hh - 12, mm, "am" if hh < 12 else "pm"]
-	else:
-		b.text = "Day %d · Open shop" % Save.day
+	(_cache.lv_btn as Button).text = "Lv %d" % lp.z
+	(_cache.lv_btn as Button).tooltip_text = "Chef level %d · %d/%d stars to the next level" % [lp.z, lp.x, lp.y]
+	(_cache.rate_btn as Button).text = "%.1f" % Save.reputation
 
 # ================================================================ ticket (current order / guide)
 func _build_ticket() -> void:
@@ -223,6 +211,7 @@ func _build_ticket() -> void:
 	tape.rotation = -0.03
 	tape.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(tape)
+	_cache.tape = tape
 
 func _ticket_click() -> void:
 	Sfx.play("click")
@@ -230,7 +219,7 @@ func _ticket_click() -> void:
 	if a:
 		open_ticket(a.order, a)
 	elif not game.shop.open and Save.pinned < 0:
-		game.shop.toggle()
+		toast("Flip the OPEN sign by the café door to open for the day")
 	elif Save.pinned >= 0:
 		open_ticket(Save.pinned, null)
 	else:
@@ -249,7 +238,7 @@ func _sync_ticket() -> void:
 	if a:
 		var r: Dictionary = G.RECIPES[a.order]
 		var others := game.shop.orders().size() - 1
-		ticket_label.text = "ORDER · %s · %s%s" % [a.cname.to_upper(), G.yen(r.price * (2 if a.kind == "critic" else 1)), "   +%d MORE" % others if others > 0 else ""]
+		ticket_label.text = "ORDER · %s · %s · %s%s" % [a.cname.to_upper(), G.yen(r.price * (2 if a.ckind == "critic" else 1)), "%d-HAT" % G.difficulty(r), "   +%d MORE" % others if others > 0 else ""]
 		ticket_title.text = r.n
 		ticket_icon.texture = Photo.recipe(r.id, 192)
 		ticket_body.text = ("%d/%d: %s" % [gd.cur + 1, gd.steps.size(), gd.steps[gd.cur].text]) if gd.size() else ""
@@ -264,7 +253,7 @@ func _sync_ticket() -> void:
 		ticket_icon.texture = Customer.wait_texture() if w.size() else UI.icon("sign", 96)
 		if w.size():
 			ticket_title.text = "%s is ready to order" % w[0].cname
-			ticket_body.text = "Tap them (or this ticket) to take the order."
+			ticket_body.text = "Walk over and press E (or click them) to take the order."
 		elif gd.size():
 			ticket_title.text = G.RECIPES[Save.pinned].n
 			ticket_body.text = "%d/%d: %s" % [gd.cur + 1, gd.steps.size(), gd.steps[gd.cur].text]
@@ -283,10 +272,10 @@ func _sync_ticket() -> void:
 		ticket_body.text = gd.steps[gd.cur].text
 		_dots(gd)
 	else:
-		ticket_label.text = "DAY %d · SHOP CLOSED" % Save.day
+		ticket_label.text = "DAY %d · CAFÉ CLOSED" % Save.day
 		ticket_title.text = "Free cooking"
 		ticket_icon.texture = UI.icon("sign", 96)
-		ticket_body.text = "[color=#7D6283]Tap here (or the Day button) to open the shop and serve customers.[/color]"
+		ticket_body.text = "[color=#7D6283]Flip the OPEN sign by the door to serve customers.[/color]"
 
 func _dots(gd: Dictionary) -> void:
 	if ticket_dots.get_child_count() > 0 and not ticket_dots.get_child(0).is_queued_for_deletion(): return
@@ -359,7 +348,7 @@ func _build_toolbar() -> void:
 		b.add_child(badge)
 		b.pressed.connect(func():
 			Sfx.play("click")
-			if k == "cafe": game.set_overview()
+			if k == "cafe": game.leave_station()
 			elif k == "fridge": open_fridge()
 			else: game.open_station(k))
 		toolbar.add_child(b)
@@ -383,6 +372,16 @@ func _tool_builder(k: String) -> Callable:
 		return n
 
 func station_changed() -> void:
+	var in_cafe: bool = game.loc == game.cafe and not game.edit.active
+	var cooking: bool = game.open_key != ""
+	toolbar.visible = in_cafe
+	ticket_box.visible = in_cafe
+	_cache.tape.visible = in_cafe
+	orders_row.visible = in_cafe
+	for n in ["hint_panel", "btns", "shelf", "shelf_tag"]:
+		(_cache[n] as Control).visible = cooking
+	if not cooking: close_fridge()
+	(_cache.edit_btn as Button).visible = game.loc != null and game.loc.furni != null
 	for k in tool_btns:
 		var on: bool = (k == "cafe" and game.open_key == "") or k == game.open_key
 		var b: Button = tool_btns[k].b
@@ -421,6 +420,7 @@ func _build_footer() -> void:
 	hint_panel.size = Vector2(462, 124)
 	hint_panel.add_theme_stylebox_override("panel", UI.box(Color(1, 0.99, 0.965, 0.95), 26, 3, 6, Vector4(20, 12, 20, 12)))
 	root.add_child(hint_panel)
+	_cache.hint_panel = hint_panel
 	var v := UI.vbox(8)
 	hint_panel.add_child(v)
 	hint_lbl = UI.rich("", 22)
@@ -444,6 +444,7 @@ func _build_footer() -> void:
 	btns.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	btns.position = Vector2(-30, -120)
 	root.add_child(btns)
+	_cache.btns = btns
 	back_btn = UI.button("Empty", "Ghost", func(): game.empty_station(), 26)
 	back_btn.custom_minimum_size = Vector2(0, 76)
 	btns.add_child(back_btn)
@@ -467,7 +468,7 @@ func _sync_footer() -> void:
 	var st := game.current()
 	var h := ""
 	if st == null:
-		h = "Pick a station on the left, or click one in the café. Tap customers to take orders!"
+		h = "Walk to a station, or pick one on the left."
 		if game.shop.waiting().size(): h = "<b>%s</b> is waiting to order. Click them!" % game.shop.waiting()[0].cname
 	else:
 		h = st.hint()
@@ -497,7 +498,7 @@ func _sync_footer() -> void:
 		go_btn.pivot_offset = go_btn.size * 0.5
 	back_btn.visible = st != null and st.items.size() > 0 and not st.busy() and st.key != "bin"
 	var nh := game.next_hint()
-	next_chip.visible = nh.size() > 0 and not modal_open()
+	next_chip.visible = nh.size() > 0 and not modal_open() and game.loc == game.cafe and not game.edit.active
 	if nh.size():
 		next_chip.text = nh.label + "  ›"
 		next_chip.position.y = -222 + sin(game.clock * 3.5) * 5.0
@@ -511,6 +512,7 @@ func _build_counter() -> void:
 	shelf.position = Vector2(712, -146)
 	shelf.custom_minimum_size = Vector2(736, 124)
 	root.add_child(shelf)
+	_cache.shelf = shelf
 	var h := UI.hbox(8)
 	shelf.add_child(h)
 	var tag := UI.label("COUNTER", 14, UI.PLUM, UI.font_xbold)
@@ -520,6 +522,7 @@ func _build_counter() -> void:
 	root.add_child(tagp)
 	tagp.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	tagp.position = Vector2(740, -164)
+	_cache.shelf_tag = tagp
 	for i in Game.COUNTER_CAP:
 		var slot := Button.new()
 		slot.custom_minimum_size = Vector2(80, 92)
@@ -675,9 +678,12 @@ func _process(dt: float) -> void:
 	else:
 		toast_box.modulate.a = 0.0
 	orders_row.position = Vector2(ticket_box.position.x + ticket_box.size.x + 14, ticket_box.position.y + 6)
-	if game.shop.open and int(game.clock * 2.0) != _cache.get("dt", -1):
+	ticket_box.position.y = 140.0 if game.open_key == "" else 98.0
+	_cache.tape.position.y = ticket_box.position.y - 12.0
+	life.update(dt)
+	if int(game.clock * 2.0) != _cache.get("dt", -1):
 		_cache.dt = int(game.clock * 2.0)
-		_sync_day()
+		_sync_top()
 
 # ================================================================ modal panels
 func modal_open() -> bool:
@@ -711,12 +717,16 @@ func close_modal(w: Control) -> void:
 	Sfx.play("pop", 0.6, 0.8)
 
 func close_top() -> void:
+	if life.is_open():
+		life.advance()
+		return
 	if fridge and fridge.visible:
 		close_fridge()
 		return
 	if _modals.size(): close_modal(_modals.back())
 
 func close_all() -> void:
+	if life.is_open(): life._close_dlg()
 	for w in _modals.duplicate(): close_modal(w)
 
 func _panel(title: String, sub := "", width := 900.0) -> Array:
@@ -745,8 +755,8 @@ func open_ticket(rid: int, cust: Customer) -> void:
 	var missing: Array = r.need.filter(func(k): return not have.has(k))
 	var buy_list: Array = missing if missing.size() else r.need
 	var cost := 0
-	for k in buy_list: cost += G.ING_COST.get(k, 0)
-	var pr := _panel(r.n, ("%s's order · pays %s" % [cust.cname, G.yen(r.price * (2 if cust.kind == "critic" else 1))]) if cust else "Menu price %s · ingredients %s" % [G.yen(r.price), G.yen(r.cost)], 940)
+	for k in buy_list: cost += 0 if int(Save.pantry.get(k, 0)) > 0 else G.ING_COST.get(k, 0)
+	var pr := _panel(r.n, ("%s's order · pays %s" % [cust.cname, G.yen(r.price * (2 if cust.ckind == "critic" else 1))]) if cust else "Menu price %s · ingredients %s" % [G.yen(r.price), G.yen(r.cost)], 940)
 	var v: VBoxContainer = pr[1]
 	var top := UI.hbox(18)
 	v.add_child(top)
@@ -757,18 +767,25 @@ func open_ticket(rid: int, cust: Customer) -> void:
 	var info := UI.vbox(10)
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(info)
+	var dh := UI.hbox(8)
+	dh.add_child(UI.label("Difficulty", 18, UI.MUTED, UI.font_xbold))
+	dh.add_child(UI.hats(G.difficulty(r), 26))
+	if G.diff_bonus(r) > 0.0: dh.add_child(UI.label("+%d%% tip when cooked perfectly" % int(G.diff_bonus(r) * 100), 17, UI.OK, UI.font_xbold))
+	info.add_child(dh)
 	info.add_child(UI.label(r.desc, 22, UI.MUTED, UI.font_body, true))
 	var ings := HFlowContainer.new()
 	ings.add_theme_constant_override("h_separation", 8)
 	ings.add_theme_constant_override("v_separation", 8)
 	for k in r.need:
-		ings.add_child(ing_chip(k, have.has(k), G.yen(G.ING_COST.get(k, 0)) if not have.has(k) else "✓"))
+		ings.add_child(ing_chip(k, have.has(k), "✓" if have.has(k) else ("pantry" if int(Save.pantry.get(k, 0)) > 0 else G.yen(G.ING_COST.get(k, 0)))))
 	info.add_child(ings)
-	if cust and cust.kind == "regular":
-		var hearts := int(Save.friends.get(cust.cname, 0))
-		info.add_child(UI.label("%s ♥ %d/10  ·  favourite: %s" % [cust.cname, hearts, cust.get_meta("fav", "")], 20, UI.SAKURA_D, UI.font_xbold))
-	if cust and cust.kind == "critic":
-		info.add_child(UI.label("Critic: pays double, wants it cooked perfectly!", 20, UI.SAKURA_D, UI.font_xbold))
+	if cust and cust.npc != "":
+		var hh := UI.hbox(8)
+		hh.add_child(UI.hearts(Save.hearts(cust.npc), 24))
+		hh.add_child(UI.label("favourite: %s" % cust.get_meta("fav", ""), 19, UI.SAKURA_D, UI.font_xbold))
+		info.add_child(hh)
+	if cust and cust.ckind == "critic":
+		info.add_child(UI.label("Food critic: pays double and writes a review. Wants it perfect, fast and ambitious!", 19, UI.SAKURA_D, UI.font_xbold, true))
 	var row := UI.hbox(12)
 	v.add_child(row)
 	var mh := {}
@@ -864,7 +881,8 @@ func open_fridge() -> void:
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		bv.add_child(l)
-		var pl := UI.label(G.yen(G.ING_COST.get(k, 0)), 15, UI.MUTED, UI.font_xbold)
+		var stock := int(Save.pantry.get(k, 0))
+		var pl := UI.label(("pantry ×%d" % stock) if stock > 0 else G.yen(G.ING_COST.get(k, 0)), 15, UI.OK if stock > 0 else UI.MUTED, UI.font_xbold)
 		pl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		bv.add_child(pl)
 		var kk: String = k
@@ -980,86 +998,18 @@ func show_summary(s: Dictionary, day: int) -> void:
 		b.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		grid.add_child(b)
 	var lp := Save.level_progress()
-	v.add_child(UI.label("Café level %d · %d/%d stars to the next level" % [Save.level(), lp.x, lp.y], 21, UI.MUTED, UI.font_xbold))
+	v.add_child(UI.label("Chef level %d · %d/%d stars to the next level · café rating %.1f" % [lp.z, lp.x, lp.y, Save.reputation], 21, UI.MUTED, UI.font_xbold))
 	var mh := {}
 	var row2 := UI.hbox(12)
 	row2.alignment = BoxContainer.ALIGNMENT_CENTER
 	row2.add_child(UI.button("Keep cooking", "", func(): close_modal(mh.w)))
-	row2.add_child(UI.button("Decorate", "Mint", func():
+	row2.add_child(UI.button("Rearrange furniture", "Mint", func():
 		close_modal(mh.w)
-		open_decor()))
+		game.edit.start()))
 	v.add_child(row2)
 	mh.w = _modal(pr[0])
 	(pr[2] as Button).pressed.connect(func(): close_modal(mh.w))
 	Sfx.play("chime")
-
-# ---------------------------------------------------------------- decorations shop
-const DECOR := [
-	["lucky_cat", "Lucky cat", 2500, 1, "Maneki-neko waves in good fortune: +5% tips."],
-	["flowers", "Flower vase", 1800, 1, "Fresh flowers on the bar: customers arrive a little sooner."],
-	["fairy_lights", "Fairy lights", 3200, 2, "Twinkly lights along the wall. So cosy."],
-	["big_plant", "Big plant", 2800, 2, "A leafy friend for the corner."],
-	["record_player", "Record player", 4500, 3, "Lo-fi on vinyl: customers wait 25% longer."],
-	["poster", "Hill poster", 1500, 1, "A sunny painting for the wall."],
-	["lanterns", "Paper lanterns", 3800, 4, "Glowing lanterns for festival nights."],
-	["cat_bed", "Café cat", 6000, 5, "A sleepy orange cat moves in. Zzz…"],
-]
-
-func open_decor() -> void:
-	var pr := _panel("Decorate", "Spend your earnings to make the café even cosier · Café level %d" % Save.level(), 980)
-	var v: VBoxContainer = pr[1]
-	var grid := GridContainer.new()
-	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 12)
-	grid.add_theme_constant_override("v_separation", 12)
-	v.add_child(grid)
-	var mh := {}
-	for d in DECOR:
-		var key: String = d[0]
-		var card := PanelContainer.new()
-		card.theme_type_variation = "Card"
-		card.custom_minimum_size = Vector2(450, 0)
-		var h := UI.hbox(12)
-		card.add_child(h)
-		var iv := UI.vbox(2)
-		iv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		h.add_child(iv)
-		iv.add_child(UI.label(d[1], 26, UI.PLUM, UI.font_display))
-		iv.add_child(UI.label(d[4], 18, UI.MUTED, UI.font_xbold, true))
-		var owned := Save.decor.has(key)
-		var b: Button
-		if owned:
-			var on: bool = Save.decor_on.get(key, true)
-			b = UI.button("Shown" if on else "Hidden", "Mint" if on else "Ghost", func():
-				Save.decor_on[key] = not Save.decor_on.get(key, true)
-				Save.save()
-				game.apply_decor()
-				close_modal(mh.w)
-				open_decor(), 20)
-		elif Save.level() < d[3]:
-			b = UI.button("Lv %d" % d[3], "Ghost", Callable(), 20)
-			b.disabled = true
-		else:
-			b = UI.button(G.yen(d[2]), "Gold", func():
-				if Save.wallet < d[2]:
-					toast("Not enough yen yet. Serve more customers!")
-					Sfx.play("sad")
-					return
-				Save.wallet -= d[2]
-				Save.decor[key] = true
-				Save.decor_on[key] = true
-				Save.save()
-				game.apply_decor()
-				Sfx.play("yay")
-				toast("%s added to the café!" % d[1])
-				close_modal(mh.w)
-				game.set_overview(), 22)
-		b.custom_minimum_size = Vector2(150, 60)
-		b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		h.add_child(b)
-		grid.add_child(card)
-	mh.w = _modal(pr[0])
-	(pr[2] as Button).pressed.connect(func(): close_modal(mh.w))
 
 # ---------------------------------------------------------------- settings
 func open_settings() -> void:
@@ -1098,8 +1048,8 @@ func open_settings() -> void:
 			Save.save()
 			Sfx.play("click")
 			if key == "rain":
-				game.cafe.set_rain(on)
-				Sfx.set_ambience(on)
+				game.loc.set_hour(Save.hour())
+				Sfx.set_ambience(on and Save.weather == "rain")
 			elif key == "fullscreen":
 				DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if on else DisplayServer.WINDOW_MODE_WINDOWED))
 		v.add_child(cb)
@@ -1122,7 +1072,18 @@ func open_settings() -> void:
 				cu.pressed.connect(func(): Updater.update_now(), CONNECT_ONE_SHOT))
 		vrow.add_child(cu)
 	v.add_child(vrow)
-	v.add_child(UI.label("Keys: Space = do the station's action · 1-8 = counter · F = fridge · B = book · ←/→ = stations · Esc = café view", 18, UI.MUTED, UI.font_xbold, true))
+	var crow := UI.hbox(10)
+	crow.add_child(UI.label("Cheat code", 20, UI.PLUM, UI.font_xbold))
+	var code := LineEdit.new()
+	code.placeholder_text = "psst… try kaching"
+	code.custom_minimum_size = Vector2(300, 48)
+	code.add_theme_font_size_override("font_size", 20)
+	code.text_submitted.connect(func(t):
+		toast(game.life.cheat(t))
+		code.text = "")
+	crow.add_child(code)
+	v.add_child(crow)
+	v.add_child(UI.label("Walk: WASD / arrows or click · E / Space = interact · J = journal · B = book · F = fridge · Q = eat carried dish · In a station: Space = action, 1-8 = counter, ←/→ = stations, Esc = step back · ` = cheat console", 17, UI.MUTED, UI.font_xbold, true))
 	var row2 := UI.hbox(12)
 	v.add_child(row2)
 	var mh := {}
@@ -1136,8 +1097,14 @@ func open_settings() -> void:
 			reset.set_meta("armed", true)
 			reset.text = "Tap again to erase everything")
 	row2.add_child(reset)
+	row2.add_child(UI.button("Title screen", "Ghost", func():
+		Save.save()
+		close_modal(mh.w)
+		show_title(), 20))
 	if not OS.has_feature("web"):
-		row2.add_child(UI.button("Quit game", "Ghost", func(): get_tree().quit(), 20))
+		row2.add_child(UI.button("Save & quit", "Ghost", func():
+			Save.save()
+			get_tree().quit(), 20))
 	mh.w = _modal(pr[0])
 	(pr[2] as Button).pressed.connect(func(): close_modal(mh.w))
 
@@ -1169,9 +1136,8 @@ func show_title() -> void:
 	t.add_theme_constant_override("shadow_offset_y", 6)
 	t.add_theme_constant_override("shadow_offset_x", 0)
 	v.add_child(t)
-	for line in ["Grab anything from the fridge, then chop, stir, blend, roll, boil, fry, bake or freeze it. The kitchen works out what you made.",
-			"Flip the sign to open your little café, take orders and get paid. Decorate with your earnings and make friends with the regulars.",
-			"%d of %d recipes discovered. Best with headphones." % [Save.found_count(), G.RECIPES.size()]]:
+	for line in ["Run Grandma's little café in Hoshizora Town: cook 100 recipes, serve customers, impress the food critics.",
+			"Walk to town, shop, decorate your café and apartment, make friends, fall in love and raise a family."]:
 		var l := UI.label(line, 22, UI.MUTED, UI.font_xbold, true)
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		l.custom_minimum_size.x = 680
@@ -1179,14 +1145,34 @@ func show_title() -> void:
 	var row := UI.hbox(14)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	v.add_child(row)
-	row.add_child(UI.button("Start cooking" if Save.served_total == 0 and Save.found_count() == 0 else "Continue · Day %d" % Save.day, "", func():
+	if Save.started:
+		row.add_child(UI.button("Continue · Day %d" % Save.day, "", func():
+			hide_title()
+			Sfx.play("chime")
+			game.life.check_story(), 30))
+	var newgame := func(mode: String):
 		hide_title()
-		Sfx.play("chime")
-		toast("Tap the Fridge to grab ingredients, or open the shop!"), 30))
-	row.add_child(UI.button("Recipe book", "Ghost", func():
-		hide_title()
-		open_book(), 26))
-	row.add_child(UI.button("Settings", "Ghost", func(): open_settings(), 26))
+		open_creator(mode)
+	var story := UI.button("New story", "Mint" if Save.started else "", Callable(), 26)
+	var free := UI.button("Freeplay", "Ghost", Callable(), 26)
+	for pair in [[story, "story"], [free, "freeplay"]]:
+		var b: Button = pair[0]
+		var m: String = pair[1]
+		b.pressed.connect(func():
+			if Save.started and not b.get_meta("armed", false):
+				b.set_meta("armed", true)
+				b.text = "Start over? Tap again"
+				return
+			newgame.call(m))
+		row.add_child(b)
+	var row2 := UI.hbox(14)
+	row2.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.add_child(row2)
+	row2.add_child(UI.button("Recipe book", "Ghost", func(): open_book(), 22))
+	row2.add_child(UI.button("Settings", "Ghost", func(): open_settings(), 22))
+	var info := UI.label("%d of %d recipes discovered · v%s · best with headphones" % [Save.found_count(), G.RECIPES.size(), Updater.current], 17, UI.MUTED, UI.font_xbold)
+	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(info)
 	root.add_child(_title)
 	_modals.append(_title)
 	UI.pop_in(p)
@@ -1198,3 +1184,28 @@ func hide_title() -> void:
 		tw.tween_property(_title, "modulate:a", 0.0, 0.3)
 		tw.tween_callback(_title.queue_free)
 	_title = null
+
+# ================================================================ life UI (see life_ui.gd)
+func location_changed() -> void:
+	station_changed()
+	counter_changed()
+	carry_changed()
+
+func carry_changed() -> void: life.carry_changed()
+func fade(mid: Callable, done := Callable()) -> void: life.fade(mid, done)
+func heart_fade(then: Callable) -> void: life.heart_fade(then)
+func say(lines: Array, done := Callable()) -> void: life.say(lines, done)
+func ask(speaker: String, text: String, opts: Array) -> void: life.ask(speaker, text, opts)
+func ask_text(q: String, default: String, cb: Callable) -> void: life.ask_text(q, default, cb)
+func advance_dialogue() -> void: life.advance()
+func typing() -> bool: return life.typing()
+func open_console() -> void: life.open_console()
+func open_journal() -> void: life.open_journal()
+func open_shop(id: String) -> void: life.open_shop(id)
+func open_boutique(free: bool) -> void: life.open_boutique(free)
+func open_newspaper(reviews: Array) -> void: life.open_newspaper(reviews)
+func pick_gift(npc: String) -> void: life.pick_gift(npc)
+func open_creator(mode: String) -> void: life.open_creator(mode)
+func edit_ui(on: bool) -> void: life.edit_ui(on)
+func edit_changed() -> void: life.edit_changed()
+func chapter_banner(n: int, t: String) -> void: show_banner("Chapter %d" % n, t)

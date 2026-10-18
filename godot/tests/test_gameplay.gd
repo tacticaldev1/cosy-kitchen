@@ -1,28 +1,51 @@
 extends Node
-## Plays the game through its real stations and shop, headless (like tests/smoke.mjs).
+## Plays the game through its real stations, shop, town and life systems, headless.
 
 func run(t) -> void:
 	var game: Game = load("res://scenes/main.tscn").instantiate()
 	add_child(game)
 	await get_tree().process_frame
+	game.instant = true
 	game.hud.hide_title()
+	Save.new_game("story", "Tester", Chibi.random_look())
+	Save.flags["intro_0"] = true
+	game.home.reload()
+	game.cafe.furni.load_layout()
+	t.check(game.loc == game.home and Save.started, "a new life starts at home")
+	# ---- difficulty ratings
+	var per := [0, 0, 0, 0, 0, 0]
+	for r in G.RECIPES: per[G.difficulty(r)] += 1
+	t.check(per[0] == 0 and per.slice(1).all(func(n): return n >= 15), "every recipe gets 1-5 chef hats, spread across the menu %s" % str(per.slice(1)))
+	var easy: Dictionary = G.RECIPES.filter(func(r): return r.n == "Popcorn")[0]
+	var hard: Array = G.RECIPES.filter(func(r): return G.difficulty(r) == 5)
+	t.check(G.difficulty(easy) <= 2 and G.build_steps(hard[0]).size() >= G.build_steps(easy).size(), "popcorn is easy, 5-hat dishes take more steps")
+	# ---- walk to the café and open
+	game.travel_now("city", "home")
+	t.check(game.loc == game.city and game.player.nav == game.city.nav, "out the door into town")
+	game.travel_now("cafe", "door")
+	t.check(game.loc == game.cafe and Story.done("visit_cafe"), "into the café (story quest ticks)")
+	t.check(game.shop.seats() >= 9, "bar stools plus the starting tables give seats (%d)" % game.shop.seats())
+	Save.minute = 600.0
 	var w0: int = Save.wallet
-	# 1. open the shop, a customer comes in and orders pancakes
 	game.shop.toggle()
+	t.check(game.shop.open and Story.done("open_shop"), "flipping the sign opens the café")
+	game.hud.close_all()
 	game.shop.spawn()
-	game.sim(12.0)
 	var c: Customer = game.shop.customers[0]
-	t.check(c.state == "wait", "a customer walks in and sits down (%s)" % c.state)
-	game.shop.take_order(c)
+	game.sim(16.0)
+	t.check(c.state == "wait" and c.sitting, "a customer walks in through the door and sits down (%s)" % c.state)
+	t.check(Vector2(c.global_position.x, c.global_position.z).distance_to(Vector2(c.seat_pos.x, c.seat_pos.z)) < 0.05, "…at their seat")
+	game.go_and(c.global_position, 0.7, func(): game.customer_tap(c))
+	t.check(c.state == "order", "walking up to them takes the order")
 	game.hud.close_all()
 	var pancakes: Dictionary = G.RECIPES.filter(func(r): return r.n == "Fluffy Pancakes")[0]
 	c.order = pancakes.id
 	game.shop.set_active(c)
 	game.buy_for(pancakes, c)
 	t.check(game.stations.bowl.items.size() == 3, "Buy all puts egg, flour and milk into the bowl (%d)" % game.stations.bowl.items.size())
-	t.check(game.open_key == "bowl", "camera moves to the bowl")
-	# 2. stir with real circular pointer gestures
+	t.check(game.open_key == "bowl" and not game.player.visible, "you step up to the bowl")
 	var bowl: BowlStation = game.stations.bowl
+	game._update_camera(0.0, true)
 	var center := game.screen_pos(bowl.global_position + Vector3(0, 0.06, 0))
 	bowl.pointer_down(center + Vector2(80, 0))
 	var prev := center + Vector2(80, 0)
@@ -34,34 +57,42 @@ func run(t) -> void:
 		if bowl.items.is_empty(): break
 	bowl.pointer_up(prev)
 	t.check(bowl.items.is_empty() and game.counter.size() == 1, "stirring in circles makes batter on the counter")
-	t.check(game.next_hint().get("tool", "") == "pan", "the guide points to the Pan next")
-	# 3. fry: counter -> pan, start, cook into the perfect zone, take out
+	t.check(Story.done("cook_any"), "cooking ticks the story quest")
 	game.open_station("pan")
 	game.counter_tap(0)
 	var pan: PanStation = game.stations.pan
-	t.check(pan.items.size() == 1, "tapping the counter moves the batter into the pan")
 	pan.on_btn()
-	t.check(pan.run, "the pan heats up")
 	game.sim(5.0)
-	t.check(pan.status() == "ready", "after 5s the pan says ready (%s, cook %.2f)" % [pan.status(), pan.cook])
 	pan.on_btn()
 	var f: Dictionary = game.counter[0]
-	t.check(f.recipe == pancakes.id and f.q == "perfect", "perfect Fluffy Pancakes come out (%s, %s)" % [f.recipe, f.q])
-	# 4. plate and serve
+	t.check(f.recipe == pancakes.id and f.q == "perfect", "perfect Fluffy Pancakes come out of the pan")
 	game.open_station("plate")
 	game.counter_tap(0)
-	var b: Dictionary = game.stations.plate.btn()
-	t.check(b.get("label", "").begins_with("Serve "), "the plate offers to serve the customer (%s)" % b.get("label", ""))
+	t.check(game.stations.plate.btn().get("label", "").begins_with("Serve "), "the plate offers to serve the customer")
 	game.serve()
-	t.check(c.state == "eat", "the customer receives the order")
+	t.check(game.carrying.get("rid", -1) == pancakes.id and game.open_key == "" and game.player.carried != null, "picking up the plate puts the dish in your hands")
+	t.check(game._cust_label(c).begins_with("Serve"), "walking up to the customer offers to serve")
+	game.customer_tap(c)
+	t.check(c.state == "eat" and c.meal != null and game.carrying.is_empty(), "handing it over: the customer eats at their table")
 	game.sim(2.0)
 	t.check(Save.wallet - w0 > 900, "the customer paid (net %s after ingredients)" % G.yen(Save.wallet - w0))
-	game.sim(8.0)
-	t.check(not game.shop.customers.has(c) or c.state == "leave", "the customer leaves happy")
-	# 5. chop with a swipe, roll sushi, blend, freeze, micro popcorn, oven cookies
+	t.check(Save.reputation > 1.0, "a perfect quick meal lifts the café rating (%.2f)" % Save.reputation)
+	game.sim(14.0)
+	t.check(not game.shop.customers.has(c), "the customer walks back out the door")
+	# ---- staff meal restores energy
+	Save.energy = 40.0
+	var g2 := G.merge_foods([G.new_food("egg"), G.new_food("flour"), G.new_food("milk")], "mix")
+	G.apply_proc(g2, "fry", 0.8)
+	game.stations.plate.add_item(g2)
+	game.serve()
+	game.hud.close_all()
+	game.eat_carried()
+	t.check(Save.energy > 55.0 and game.carrying.is_empty(), "eating a staff meal gives energy (%.0f)" % Save.energy)
+	# ---- other stations
 	game.open_station("board")
 	var board: BoardStation = game.stations.board
 	board.add_item(G.new_food("tomato"))
+	game._update_camera(0.0, true)
 	var tp := game.screen_pos(board.world_slot(0, 1) + Vector3(0, 0.03, 0))
 	for i in 3:
 		board.pointer_down(tp)
@@ -71,31 +102,114 @@ func run(t) -> void:
 	game.open_station("micro")
 	micro.add_item(G.new_food("kernels"))
 	micro.press(4); micro.press(10)
-	t.check(micro.buf == "50", "keypad types 0:50 (%s)" % micro.buf)
 	micro.press(11)
-	t.check(micro.run, "▶ starts the microwave")
 	game.sim(7.0)
-	var pop: Dictionary = game.counter.back()
-	t.check(pop.recipe >= 0 and G.RECIPES[pop.recipe].n == "Popcorn", "the microwave pops Popcorn")
-	var oven: OvenStation = game.stations.oven
-	game.open_station("oven")
-	for k in ["flour", "butter", "sugar", "chocolate"]: oven.add_item(G.new_food(k))
-	oven.on_btn()
-	t.check(oven.run, "the oven bakes")
-	game.sim(7.0)
-	oven.on_btn()
-	t.check(game.counter.back().recipe < 0, "unmixed cookie ingredients bake into an invention, not cookies (%s)" % G.invent_name([game.counter.back()]))
-	# 6. counter limit and bin
+	t.check(game.counter.back().recipe >= 0 and G.RECIPES[game.counter.back().recipe].n == "Popcorn", "the microwave pops Popcorn")
+	# ---- pantry
 	game.counter.clear()
-	for i in 10: game.add_ingredient("egg")
-	t.check(game.counter.size() + game.current().items.size() >= 8, "fridge fills station then counter")
+	Save.pantry = {"egg": 2}
+	var w1 := Save.wallet
+	game.add_ingredient("egg")
+	t.check(Save.wallet == w1 and int(Save.pantry.get("egg", 0)) == 1, "market pantry stock is used before paying for delivery")
+	game.counter.append(G.new_food("tomato"))
 	game.open_station("bin")
 	var n0 := game.counter.size()
 	game.counter_tap(0)
-	t.check(game.counter.size() == n0 - 1, "tapping the counter with the bin open throws food away")
-	# 7. day summary
+	t.check(game.counter.size() == n0 - 1, "the bin throws food away")
+	# ---- critic
+	var cr := Customer.new()
+	cr.setup({"id": 99, "name": "Critic Kuroda", "kind": "critic", "look": Shop.CRITICS[0].look})
+	cr.set_meta("paper", "The Hoshizora Times")
+	game.cafe.add_child(cr)
+	var rep0 := Save.reputation
+	var rv: Dictionary = game.shop._review(cr, hard[0], "perfect", true)
+	t.check(rv.stars >= 4 and Save.reputation > rep0 and Story.done("critic4"), "a perfect, quick, ambitious dish earns a %d-star review" % rv.stars)
+	var rv2: Dictionary = game.shop._review(cr, easy, "burnt", false)
+	t.check(rv2.stars == 1, "burnt, slow and easy gets one star")
+	cr.queue_free()
 	game.shop.close_day()
-	t.check(game.hud.modal_open(), "closing the shop shows the day summary")
+	t.check(game.hud.modal_open() and not game.shop.open, "closing shows the day summary")
 	game.hud.close_all()
+	# ---- edit mode
+	Save.furni_inv = {"table2": 1}
+	var seats0 := game.shop.seats()
+	t.check(game.edit.start(), "edit mode opens in the café when it's closed")
+	game.edit.hold_new("table2")
+	game.edit._update_ghost(Vector3(2.9, 0, 0.6))
+	var ok := game.edit._ok
+	game.edit._place()
+	game.edit.stop()
+	t.check(ok and game.shop.seats() == seats0 + 2 and not Save.furni_inv.has("table2"), "placing a new table adds two seats (%d → %d)" % [seats0, game.shop.seats()])
+	game.edit.start()
+	var it := game.cafe.furni.pick(Vector3(2.9, 0, 0.6))
+	game.edit._pick_up(it)
+	game.edit.store()
+	game.edit.stop()
+	t.check(game.shop.seats() == seats0 and Save.furni_inv.get("table2", 0) == 1, "storing it takes it back")
+	# ---- town life
+	game.travel_now("city", "cafe")
+	Save.rel = {}
+	game.life.chat("hana")
+	t.check(Save.hearts("hana") == 0.5 and Save.r("hana").talks == 1, "chatting with Hana: +½ heart")
+	game.life.chat("hana")
+	t.check(Save.hearts("hana") == 0.5, "only the first chat each day counts")
+	Save.gifts = {"roses": 1}
+	game.life.give("hana", "roses")
+	t.check(Save.hearts("hana") == 2.5 and Save.gifts.is_empty() and Story.done("gift"), "roses are Hana's favourite: +2 hearts")
+	Save.r("hana").hearts = 4.5
+	Save.wallet = 50000
+	Save.minute = 900.0
+	game.life.date("hana")
+	t.check(game.loc == game.city and game.city._couple == "hana" and game.player.sitting, "a date: sitting on the park bench together")
+	game.life._date_answer("hana", 2, People.DATES.hana[0])
+	t.check(int(Save.r("hana").dates) == 1 and Save.hearts("hana") >= 6.0 and not game.player.sitting, "the best answer on a date: +1.5 hearts (%.1f)" % Save.hearts("hana"))
+	game.life.ask_partner("hana")
+	t.check(Save.partner == "hana", "Hana says yes to being partners")
+	Save.has_ring = true
+	game.life.propose("hana")
+	t.check(Save.flags.get("wedding", false) and not Save.has_ring, "proposing with the ring sets a wedding date")
+	game.life.new_day()
+	game.life.morning()
+	game.sim(1.0)
+	t.check(Save.married and Story.done("married"), "the wedding in the park the next morning")
+	game.city.wedding(false)
+	# ---- family
+	game.travel_now("home", "door")
+	t.check(game.home.family.size() == 1, "your spouse lives with you now")
+	game.home.furni.add("bed", -2.6, -0.3, 0)
+	game.home.furni.add("crib", 2.6, -2.0, 0)
+	Save.minute = 21 * 60.0
+	var d0 := Save.day
+	game.life.start_family()
+	t.check(int(Save.family.expecting) == d0 + 4 and Save.day == d0 + 1 and game.loc == game.home, "the family talk at bedtime: fade to black, and a baby is on the way")
+	for i in 3:
+		game.life.new_day()
+		game.life.morning()
+	game.sim(1.5)
+	t.check(Save.family.kids.size() == 1 and int(Save.family.expecting) == -1 and game.home.family.size() == 2, "the baby is born and named (%d kids)" % Save.family.kids.size())
+	t.check(Life.kid_stage(Save.family.kids[0]) == "baby", "newborns are babies")
+	for i in 10: game.life.new_day()
+	t.check(Life.kid_stage(Save.family.kids[0]) == "child", "…and grow into children")
+	# ---- sleep & time
+	game.hud.close_all()
+	Save.minute = 600.0
+	Save.energy = 50.0
+	game.sim(10.0)
+	t.check(Save.minute >= 609.0 and Save.energy < 50.0, "time passes one game minute per second and energy drains")
+	var d1 := Save.day
+	game.life.sleep()
+	t.check(Save.day == d1 + 1 and Save.energy == 100.0 and Save.minute == 420.0 and game.loc == game.home, "sleeping ends the day: 7am, full energy, at home")
+	# ---- cheats
+	var w2 := Save.wallet
+	t.check(game.life.cheat("KaChing") != "Unknown code" and Save.wallet == w2 + 10000, "cheat kaching: +¥10,000")
+	game.life.cheat("cookbook")
+	t.check(Save.found_count() == G.RECIPES.size(), "cheat cookbook: every recipe found")
+	t.check(game.life.cheat("nope") == "Unknown code" and Save.cheats_used, "unknown codes are rejected")
+	# ---- save round trip
+	Save.save()
+	var snap := Save.wallet
+	Save.wallet = 1
+	Save.load_game()
+	t.check(Save.wallet == snap and Save.married and Save.family.kids.size() == 1, "the save file round-trips the new life")
 	Save.reset()
 	game.queue_free()

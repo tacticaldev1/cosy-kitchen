@@ -227,6 +227,27 @@ func _init() -> void:
 		if not MENU_PRICE.has(p[0]): push_warning("no price for " + p[0])
 		RECIPES.append(r)
 		i += 1
+	_rate_difficulty()
+
+## Recipe difficulty 1..5 chef hats: how many steps, tools and ingredients a dish takes,
+## ranked across the whole menu so each rating is roughly a fifth of the recipes.
+func _rate_difficulty() -> void:
+	var scored: Array = []
+	for r in RECIPES:
+		scored.append([build_steps(r).size() * 3.0 + r.tools.size() * 1.5 + r.need.size() * 0.8 + r.weight * 0.05, r])
+	scored.sort_custom(func(a, b): return a[0] < b[0])
+	for k in scored.size():
+		scored[k][1].diff = 1 + mini(4, k * 5 / scored.size())
+
+func difficulty(r: Dictionary) -> int:
+	return int(r.get("diff", 1))
+
+## Tip multiplier for harder dishes (and what critics expect).
+func diff_bonus(r: Dictionary) -> float:
+	return [0.0, 0.0, 0.08, 0.16, 0.26, 0.4][difficulty(r)]
+
+func hats(n: int) -> String:
+	return "♛".repeat(n)
 
 # ------------------------------------------------------------------ small helpers
 func ing_name(k) -> String:

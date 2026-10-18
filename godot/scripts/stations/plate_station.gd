@@ -28,12 +28,12 @@ func live() -> Dictionary:
 
 func hint() -> String:
 	if items.is_empty():
-		return "Put the finished dish here, then serve it" if game.shop.orders().size() else "Put finished food here, then <b>Serve</b> it"
+		return "Put the finished dish here, then pick it up and carry it out" if game.shop.orders().size() else "Put finished food here, then <b>Pick up</b> the plate"
 	var d := live()
 	if d.has("match"):
 		var r: Dictionary = d.match.r
 		var o = game.shop.order_for(r.id)
-		if o: return "<b>%s</b> for %s! Serve it while it's hot" % [r.n, o.cname]
+		if o: return "<b>%s</b> for %s! Pick it up and carry it over while it's hot" % [r.n, o.cname]
 		if game.shop.open and game.shop.orders().size(): return "That's %s, but nobody ordered it. Enjoy it as a staff meal" % r.n
 		return "Looks like <b>%s</b>! Ready to serve" % r.n
 	if d.has("near"):
@@ -44,7 +44,7 @@ func btn() -> Dictionary:
 	if items.is_empty(): return {}
 	var d := live()
 	var o = game.shop.order_for(d.match.r.id) if d.has("match") else null
-	var lab = "Serve " + o.cname if o else ("Staff meal" if game.shop.open and game.shop.orders().size() else "Serve")
+	var lab = "Serve " + o.cname if o else ("Staff meal" if game.shop.open and game.shop.orders().size() else "Pick up")
 	return {"label": lab, "enabled": true, "ready": o != null or (not game.shop.open and d.has("match"))}
 
 func on_btn() -> void: game.serve()

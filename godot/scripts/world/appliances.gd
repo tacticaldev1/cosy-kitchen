@@ -63,13 +63,46 @@ static func board() -> Node3D:
 	var knife := Node3D.new()
 	knife.name = "Knife"
 	var kb := MB.new()
-	kb.col(Color("E9EEF8"), 1.0, 1.0)
-	var blade := PackedVector2Array([Vector2(0, 0), Vector2(0.17, 0), Vector2(0.15, 0.03), Vector2(0.0, 0.045)])
-	kb.push(Transform3D(Basis.from_euler(Vector3(PI * 0.5, 0, 0)), Vector3(0, 0.0, 0.002))); kb.extrude(blade, 0.004, 0.0015); kb.pop()
-	kb.col(Color("FF9EBB"), 1.0, 0.3); kb.at(Vector3(-0.055, 0.022, 0)); kb.rbox(Vector3(0.11, 0.028, 0.02), 0.009, 2); kb.pop()
-	kb.col(PLUM, 0.0)
-	for x in [-0.08, -0.03]:
-		kb.at(Vector3(x, 0.022, 0.0105)); kb.sphere(0.003, 6, 4); kb.pop()
+	# a little gyuto: straight spine, curved belly, polished steel. Built flat in x (tip at +x)
+	# and y (spine at 0, edge below), then stood up so the tip points down at the board.
+	var spine := [Vector2(0, 0), Vector2(0.12, 0), Vector2(0.16, -0.004), Vector2(0.19, -0.012), Vector2(0.205, -0.022)]
+	var edge := [Vector2(0.192, -0.031), Vector2(0.165, -0.04), Vector2(0.12, -0.046), Vector2(0.06, -0.049), Vector2(0.0, -0.049)]
+	var outline := PackedVector2Array()
+	for q in spine + edge: outline.append(Vector2(q.x, -q.y))
+	kb.col(Color("DCE3F0"), 1.0, 1.0)
+	kb.push(Transform3D(Basis.from_euler(Vector3(PI * 0.5, 0, 0)), Vector3(0, 0, -0.0018))); kb.extrude(outline, 0.0036, 0.0012); kb.pop()
+	for side in [-1.0, 1.0]:
+		var z: float = side * 0.00195
+		# the bright sharpened bevel along the edge
+		kb.col(Color("FFFFFF"), 0.0, 1.0)
+		var ep := PackedVector3Array()
+		for q in edge: ep.append(Vector3(q.x, q.y + 0.004, z))
+		ep.reverse()
+		kb.tube(ep, 0.0011, 4)
+		# soft damascus ripples
+		kb.col(Color("B9C3D8"), 0.0, 0.9)
+		for w in 2:
+			var wp := PackedVector3Array()
+			for k in 9:
+				var x := 0.012 + k * 0.019
+				wp.append(Vector3(x, -0.016 - w * 0.011 + sin(k * 1.3 + w) * 0.003 - maxf(0.0, x - 0.15) * 0.25, z * 1.05))
+			kb.tube(MB.spline3(wp, 3), 0.0006, 4)
+		# a tiny engraved sakura near the heel
+		kb.col(Color("FF9EBB"), 0.0, 0.4)
+		for f in 5:
+			var a := f * TAU / 5.0
+			kb.at(Vector3(0.022 + cos(a) * 0.0035, -0.012 + sin(a) * 0.0035, z * 1.1)); kb.sphere(0.0022, 6, 4); kb.pop()
+		kb.col(Color("FFD24A"), 0.0, 0.4); kb.at(Vector3(0.022, -0.012, z * 1.15)); kb.sphere(0.0015, 6, 4); kb.pop()
+	# bolster, walnut handle with brass rivets, pink end cap
+	kb.col(Color("AEB6C8"), 1.0, 1.0); kb.at(Vector3(-0.009, -0.013, 0)); kb.rbox(Vector3(0.014, 0.03, 0.016), 0.005, 2); kb.pop()
+	kb.col(Color("8A5A3A"), 1.0, 0.35); kb.at(Vector3(-0.068, -0.013, 0)); kb.rbox(Vector3(0.106, 0.026, 0.021), 0.009, 3); kb.pop()
+	kb.col(Color("A8704A"), 0.0, 0.3)
+	kb.tube(PackedVector3Array([Vector3(-0.112, -0.004, 0.0107), Vector3(-0.024, -0.004, 0.0107)]), 0.0008, 4)
+	kb.col(Color("FF9EBB"), 1.0, 0.4); kb.at(Vector3(-0.124, -0.013, 0)); kb.rbox(Vector3(0.014, 0.027, 0.022), 0.008, 2); kb.pop()
+	kb.col(Color("FFD24A"), 0.0, 0.9)
+	for x in [-0.04, -0.068, -0.096]:
+		for side in [-1.0, 1.0]:
+			kb.at(Vector3(x, -0.013, side * 0.0108), Vector3(PI * 0.5, 0, 0)); kb.puck(0.0035, 0.0012, 0.0006, 10); kb.pop()
 	var km := _mi(kb, "KnifeMesh")
 	km.rotation = Vector3(0, 0, -PI * 0.5)
 	knife.add_child(km)

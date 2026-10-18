@@ -10,46 +10,48 @@ Both editions share the same recipe data and rules. If you change recipes, price
 
 Godot **4.6.2**, Forward+ renderer, base resolution 1920×1080 (`canvas_items` stretch). Most of the scene is built in code; `scenes/main.tscn` is just a `Game` node.
 
+Since v3 it's a life sim: you're a chibi chef who walks between three **locations** (your café, Hoshizora Town, your apartment), cooks at the café's stations, carries dishes to customers, shops in town, decorates, dates, marries and raises a family. There's a story mode (8 chapters of quests) and freeplay, plus cheat codes.
+
 ## Commands (Git Bash, from `godot/`)
 - `tools/gd.sh import`: import assets and refresh the class cache. Run it after adding files or changing `.import` settings.
-- `tools/gd.sh test`: the headless test suite (`tests/test_runner.gd` + `tests/test_gameplay.gd`). It checks recipe detection and that every dish and ingredient builds, then plays a full order through the real stations, gestures and shop. **Run it after every change.**
-- `tools/gd.sh shot res://scenes/main.tscn <out.png> [frames] [WxH] --dev=<mode>`: screenshot a staged scene. Modes: `overview`, any station key (`board`, `pan`…), `service`, `service_over`, `title`, `book`, `detail`, `result`, `decor`, `summary`, plus `input`, which clicks through real OS events and prints the results. Add `--fps` to a service mode to print frame stats.
-- `tools/gd.sh shot res://scenes/dev_sheet.tscn <out.png> 3 1920x1080 --sheet=ingredients|pieces|dishes [--page=0|1]`: contact sheets of all art. Look at them after any art change.
+- `tools/gd.sh test`: the headless test suite (`tests/test_runner.gd` + `tests/test_gameplay.gd`). It checks recipes and art, then plays a whole life through the real systems: walk to the café, take an order, cook with gestures, carry the plate to the customer, critic reviews, edit mode, chatting/gifts/dates, wedding, a baby, sleeping, cheats and a save round trip. **Run it after every change.** Tests set `game.instant = true` (walking, fades and dialogue resolve immediately).
+- `tools/gd.sh shot res://scenes/main.tscn <out.png> [frames] [WxH] --dev=<mode>`: screenshot a staged scene. Modes: `home`, `home:family`, `cafe`, `city`, `city:<x>`, `park`, `date`, `wedding`, `service`, `service:carry`, `edit`, any station key (`board`, `pan`…), `title`, `creator`, `dialogue`, `shop:<market|homestore|boutique|florist|jeweler|bookshop>`, `journal`, `news`, `book`, `detail`, `ticket`, `result`, `summary`, `console`. Dev runs start a fresh story save.
+- `tools/gd.sh shot res://scenes/dev_sheet.tscn <out.png> 3 1920x1080 --sheet=ingredients|pieces|dishes [--page=0|1]`: contact sheets of all food art.
 - Release: `tools/release.sh <version> "notes"` bumps the version, tests, exports `build/windows/Cosy-Kitchen.exe` and `build/web/`, pushes, creates the GitHub release (repo in `application/config/github_repo`, currently `tacticaldev1/cosy-kitchen`) and deploys the web build to GitHub Pages (`gh-pages` branch). The in-game updater (`autoload/updater.gd`) looks for the release asset named exactly `Cosy-Kitchen.exe` and compares its tag with `application/config/version`.
 - Web build: the Compatibility renderer (WebGL 2) leaves **instance uniforms at zero**, so every instance uniform must default to 0 meaning "normal" (that's why it's `fade_out`, not `fade`).
 - Dev, test and screenshot runs use `user://test_save.json` and never touch the player's save.
 
 ## Asset pipelines (generated, don't hand-edit the outputs)
-- **Café room**: `tools/blender/build_cafe.py`, run as `blender -b -P tools/blender/build_cafe.py -- <abs path>/assets/models/cafe.glb`. Material names carry flags: `noline`, `glass` and `glow`/`emit`. Empties named `mark_*` are anchors (stations, seats, door, lamps…). Groups named `decor_*` are the buyable decorations. Static meshes are joined before export to keep draw calls low.
-- **Audio**: `npm run godot:audio` (from the project root). It renders the web edition's own `SND` synth, cut straight from `src/01-core.js` and `src/06-shop.js`, through Chrome's OfflineAudioContext into `assets/audio/sfx/<name>_<n>.wav` (random variations), seamless `loops/*.wav` and three composed lo-fi tracks in `music/`. After re-rendering, check that `loops/*.wav.import` still has `edit/loop_mode=2`.
+- **Blender rooms** (`tools/blender/`, shared helpers in `lib.py`): `build_cafe.py` (walkable café: kitchen, pass with bar stools, dining room, street door), `build_city.py` (the shop street and park), `build_home.py` (the apartment). Run as `blender -b -P tools/blender/build_<x>.py -- <abs path>/assets/models/<x>.glb`. Material names carry flags (`noline`, `glass`, `glow`/`emit`, `wall`/`panel` and `floor_d_<n>` for themable surfaces). Empties named `mark_*` are anchors; `obs_<i>_<w>_<d>` empties are walk-grid obstacles. Static meshes are joined before export to keep draw calls low.
+- **Audio**: `npm run godot:audio` (from the project root) renders the web edition's synth into `assets/audio/`. After re-rendering, check that `loops/*.wav.import` still has `edit/loop_mode=2`.
 
 ## Source map (`godot/scripts/`)
 | Path | What lives there |
 |---|---|
-| `autoload/game_data.gd` (`G`) | Ingredients, the 100 recipes (same `RECIPE_SRC` format as the web), prices, food model (`new_food`, `apply_proc`, `merge_foods`), `detect`, `build_steps`, `recipe_spec`/`generic_spec`/`food_spec`, `spec_key`, `invent_name`. |
-| `autoload/save_state.gd` (`Save`) | Persistent JSON save: found recipes, wallet, day, decorations, regulars' hearts, stars → café level, settings. |
-| `autoload/audio.gd` (`Sfx`) | `Sfx.play(name, intensity, pitch)`, `Sfx.loop(name)` (returns a handle with `set_param`/`stop`), ambience, music playlist and SFX/Ambience/Music buses. |
-| `autoload/photo_booth.gd` (`Photo`) | Renders 3D food into cached icon textures (`Photo.recipe/ingredient/food/spec/request`). Textures fill in a frame later. |
-| `art/mesh_builder.gd` (`MB`) | Procedural mesh toolkit: lathe, tube, rbox, puck, extrude, blob, leaf, torus. It has a transform stack and per-vertex colour/outline/gloss. `layer(1)` writes glass geometry. |
-| `art/toon.gd`, `shaders/toon.gdshader`, `outline.gdshader`, `glass.gdshader`, `particle.gdshader` | The look: cel bands, lavender ambient shadows, rim light and glints, plus constant-pixel plum outlines (inverted hull). Per-instance knobs: `cook` (browning to burnt), `frost`, `flash`, `fade`. |
-| `art/ing_art.gd` (`IngArt`) | The 59 ingredients (`build`) and chopped pieces (`piece`). |
-| `art/dish_art.gd` (`DishArt`) | Every dish type (`stack`, `bowl`, `glass`, `maki`…), tableware and garnishes. `DishArt.bare` skips plates and bowls for previews inside pans and pots. |
-| `art/food_art.gd` (`FoodArt`) | Spec → cached mesh → node (`spec_node`, `food_node`, `ingredient_node`). |
-| `world/cafe.gd` | Loads `cafe.glb`, applies toon materials, lights, the rainy window shader, time of day and decor toggles. |
-| `world/appliances.gd` (`Appl`) | Procedural appliance models with named moving parts (Knife, Whisk, Jug, Dial, Keys, Turntable…). |
-| `world/face.gd`, `world/customer.gd`, `world/fx.gd` | Kawaii faces with moods; chibi customers (and the café cat); particle presets. |
-| `stations/*.gd` | `Station` base (items, 3D item models, screen-space gestures) and one script per station. `HeatStation` holds the pot/pan/oven cook meter, alerts and live preview. |
-| `game/game.gd` (`Game`) | Builds the world, places stations on the `mark_*` anchors, runs the camera (overview ↔ station close-ups), routes input, and handles the counter, buying, serving, the guide, feedback and dev scenes. `Game.sim(seconds)` steps the simulation for tests. |
-| `game/shop.gd` (`Shop`) | Opening hours (`DAY_LEN`), customer spawning (regulars, critic, cat), orders, patience, payment and tips, day summary. |
-| `ui/*.gd` | `UI` theme and SVG icons, `Hud` (top bar, ticket, toolbar, counter, footer, toasts, all panels), `BookPanel`, and `Turntable` (a spinning 3D dish in UI). |
+| `autoload/game_data.gd` (`G`) | Ingredients, the 100 recipes, prices, food model, `detect`, `build_steps`, specs, and **difficulty** (`G.difficulty(r)` 1–5 chef hats, ranked across the menu; `G.diff_bonus(r)` tip bonus). |
+| `autoload/save_state.gd` (`Save`) | Persistent JSON save (version 3, migrates v2 saves): recipes, wallet, café rating `reputation` and critic `reviews`, the clock (`minute`), `energy`, `weather`, player name/look, furniture `layouts`/`themes`/`furni_inv`, market `pantry`, `gifts`, relationships `rel` (`Save.r(id)`, `hearts`, `add_hearts`), `partner`/`married`/`family`, story `chapter`/`flags`. `new_game(mode, name, look)`. |
+| `autoload/audio.gd`, `photo_booth.gd`, `updater.gd` | `Sfx`, `Photo` (3D → cached icon textures; `opts.focus` frames portraits), `Updater`. |
+| `art/*` | `MB` mesh builder, `Toon` shading, ingredient/dish/food art. |
+| `world/chibi.gd` (`Chibi`) | Every character: build from a look dict (adult/child/toddler/baby/cat), walk along paths, sit, wave, eat, carry. `world/customer.gd` and `game/player.gd` extend it. |
+| `world/room.gd` (`Room`) | Loads a GLB, applies toon materials, collects `mark_*` and `obs_*`, recolours walls/floors; shared interior lighting helpers. |
+| `world/appliances.gd` (`Appl`) | Appliance models with named moving parts (Knife, Whisk, Jug, Dial…). |
+| `stations/*.gd` | `Station` base and one script per station. |
+| `game/game.gd` (`Game`) | Orchestrator: locations and `travel()`, the player and follow camera, station close-ups (`open_station` walks you there first), input (WASD/click/E), focus prompts, the counter, buying, `serve()` (plate → your hands) / `deliver()` / `eat_carried()`, dates, the wedding and family scenes, dev scenes. `Game.sim(seconds)` for tests. |
+| `game/locations/*.gd` | `Location` base (room, `NavGrid`, furniture, interactables, `npcs`), `CafeLocation` (stations, stand points, OPEN sign, seats), `CityLocation` (shops, townsfolk, Grandpa Jiro, walkers, sky by hour, rain, park bench dates, wedding), `HomeLocation` (bed, kitchenette, wardrobe, TV, spouse and kids). |
+| `game/nav_grid.gd`, `furniture.gd` (`Furni`), `furniture_layer.gd`, `edit_mode.gd` | A* walk grid; the furniture catalogue, models and seats; placed furniture per room; edit mode (pick up, move, rotate, store, place from storage). |
+| `game/shop.gd` (`Shop`) | Café hours (8:00 to last orders 21:30), customers walking to random free table/bar seats, orders by difficulty, patience, tips, reputation, townsfolk regulars (hearts), critics and their reviews. |
+| `game/life.gd` (`Life`) | Clock (1 real second = 1 game minute), energy, sleep and mornings (newspaper, wedding, pregnancy, birth, kids growing), talking/gifts/dates/partner/proposal, family, story checks, `cheat(code)`. |
+| `game/people.gd` (`People`), `game/story.gd` (`Story`) | Townsfolk data, gifts, dialogue lines and date questions; story chapters and quest checks. |
+| `ui/hud.gd` (`Hud`), `ui/life_ui.gd` (`LifeUI`) | Cooking HUD (top bar, ticket, toolbar, counter, footer, book, result, settings, title). `LifeUI`: status card, prompt, carry panel, fades (incl. the tasteful family fade), dialogue with portraits and choices, shops, character creator/boutique with live preview, journal, newspaper, cheat console, edit-mode storage bar. `Hud` forwards to it. |
 
 ## Gotchas
 - GDScript lambdas capture locals **by value**. Panels keep the modal in a dictionary (`mh.w`) so close buttons can reach it.
-- `var x := …` can't infer a type from untyped arrays or ternaries. Use `var x: float = …` or untyped `var x = …`.
+- Warnings are errors: `var x := …` can't infer a type from untyped arrays, dictionaries or ternaries. Use `var x: float = …`.
+- Locations overlap at the origin; only the active one is visible and processing, and it owns the one `WorldEnvironment`.
 - Godot's SVG loader ignores `<text>`. Draw icons with paths.
 - Theme variation names must not clash with built-in class names (that's why it's `SkyBtn`, not `Sky`).
-- Built-in particle materials rendered alpha wrongly here. Particles use `shaders/particle.gdshader`.
-- If you add a spec field that changes how food looks, add it to `G.spec_key` (and `bare` is appended in `FoodArt.spec_mesh`).
+- If you add a spec field that changes how food looks, add it to `G.spec_key`.
+- Family content stays tasteful: the "starting a family" moment is a dim, hearts and fade to black, never more.
 
 # Web edition
 

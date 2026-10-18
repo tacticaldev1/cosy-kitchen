@@ -114,6 +114,8 @@ func _frame(cam: Camera3D, node: Node3D, opts: Dictionary) -> void:
 	var box := FoodArt.aabb_of(node)
 	var center := box.get_center()
 	var radius := maxf(box.size.length() * 0.5, 0.01)
+	if opts.has("focus"):
+		center.y = box.position.y + box.size.y * float(opts.focus)
 	var elev := deg_to_rad(float(opts.get("elev", ELEVATION)))
 	var yaw := float(opts.get("yaw", 0.0))
 	var dist := radius / sin(deg_to_rad(FOV) * 0.5) * float(opts.get("zoom", 1.0)) * 0.96
