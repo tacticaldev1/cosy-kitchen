@@ -315,6 +315,77 @@ func run(t) -> void:
 	game.life.caught_sneaking("yuki")
 	t.check(game.loc == game.city and Save.hearts("yuki") <= maxf(0.0, dr_y1 - 2.9) and not game.sneaking, "caught sneaking: thrown out, hearts lost (%s, %.1f→%.1f, sneaking %s, cutscene %s)" % [game.loc.key, dr_y1, Save.hearts("yuki"), game.sneaking, game.cutscene])
 	game.hud.close_all()
+	# ---- festival night, jobs, moving in, a baby with a sweetheart, buying a house
+	game.hud.close_all()
+	Save.flags["event"] = "festival"
+	Save.minute = 19 * 60.0
+	game.travel_now("city", "cafe")
+	game.city.tick(0.1)
+	t.check(game.city.festival_on and game.city.interacts.any(func(it): return it.id == "fest_takoyaki") and game.city.reachable(Vector3(-9, 0, 2.1)), "festival night: stalls on Main Street you can walk up to")
+	var mg: Minigames = game.hud.minigames
+	var w_t := Save.wallet
+	game.life.festival_job()
+	t.check(mg.active == "takoyaki", "run the takoyaki stall")
+	for i in 8: mg._tako_click(mg._state.holes[i])
+	mg._tako_tick(4.5)
+	for i in 8: mg._tako_click(mg._state.holes[i])
+	mg._state.orders[0].n = 6
+	mg._tako_serve()
+	mg._finish()
+	t.check(Save.wallet > w_t + 500 and mg.active == "", "a box of perfect takoyaki earns money (%s)" % G.yen(Save.wallet - w_t))
+	Save.wallet = 5000
+	game.life.festival_game()
+	for i in 20:
+		if mg.active != "goldfish": break
+		if mg._state.fish.size(): mg._scoop(mg._state.fish[0])
+	if mg.active != "": mg._finish()
+	t.check(Save.wallet == 4700, "goldfish scooping costs ¥300")
+	game.life.festival_mask()
+	t.check(Save.player_look.acc == "fox", "a fox mask from the festival")
+	Save.flags["event"] = ""
+	Save.minute = 10 * 60.0
+	Save.energy = 100.0
+	w_t = Save.wallet
+	game.life.start_job("books")
+	for n in range(1, 9):
+		for b in mg._state.row.get_children():
+			if b is Button and b.text == str(n) and not b.disabled:
+				b.pressed.emit()
+				break
+	mg._finish()
+	t.check(Save.wallet >= w_t + 350 and game.life.job_done_today("books"), "a shelving shift at Ren's pays")
+	game.life.start_job("bouquets")
+	mg._state.pick = mg._state.want.duplicate()
+	mg._bq_submit()
+	t.check(int(mg._state.made) == 1, "a bouquet made exactly as asked")
+	mg._finish()
+	w_t = Save.wallet
+	game.life.start_job("delivery")
+	t.check(game.life.delivery.queue.size() == 3 and game.player.carried != null and game.city.interacts.any(func(it): return it.id == "delivery"), "a delivery shift: carry a crate to a door across town")
+	for i in 3: game.life.deliver_crate()
+	t.check(Save.wallet >= w_t + 1050 and game.life.delivery.is_empty() and game.player.carried == null, "three deliveries done (%s)" % G.yen(Save.wallet - w_t))
+	game.life.start_job("delivery")
+	t.check(game.life.delivery.is_empty(), "one delivery shift per day")
+	# moving in with a sweetheart, and asking for a baby
+	game.hud.close_all()
+	Save.r("kai").hearts = 9.0
+	Save.r("kai").romance = true
+	game.life.move_in("kai")
+	t.check(Save.partner == "kai" and Save.flags.get("live_with", "") == "kai", "move in with Kai")
+	game.life.sleep()
+	t.check(game.loc == game.npc_house and game.npc_house.host == "kai" and game.npc_house.interacts.any(func(it): return it.id == "bed"), "you wake up at Kai's place now")
+	Save.minute = 21 * 60.0
+	Save.family.others = []
+	game.life.ask_baby("kai")
+	t.check(Save.family.others.any(func(o): return o.with == "kai"), "ask Kai for a baby together (fade to black)")
+	game.life.move_out()
+	# buying the house
+	Save.wallet = 150000
+	var n_items: int = Save.layouts.home.size()
+	game.life.buy_house()
+	t.check(Save.home_kind == "house" and game.home.kind == "house" and Save.wallet == 30000, "buy the house on the corner for ¥120,000")
+	t.check(Save.layouts.home.size() + Save.furni_inv.size() >= n_items and NavReport.check(game.home, game.home.entry_point("door"), NavReport.points_for(game.home)).is_empty(), "your furniture moves with you and the house is walkable %s" % str(NavReport.check(game.home, game.home.entry_point("door"), NavReport.points_for(game.home))))
+	game.hud.close_all()
 	# ---- sleep & time
 	game.hud.close_all()
 	Save.minute = 600.0

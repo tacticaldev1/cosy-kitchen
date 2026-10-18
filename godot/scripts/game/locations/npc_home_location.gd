@@ -82,8 +82,15 @@ func set_host(id: String) -> void:
 	interacts.clear()
 	add_interact("door", room.mark("door"), 0.8, "Leave the house", func(): game.leave_house())
 	interacts.back().h = 1.6
-	add_interact("snoop", nav.nearest_free(room.mark("kitchen") + Vector3(0.6, 0, 0.1)), 0.8, "Snoop around", func(): game.life.snoop(host))
-	interacts.back().h = 1.2
+	if String(Save.flags.get("live_with", "")) == id:
+		var b := furni.first("bed")
+		if b.is_empty(): b = furni.first("single_bed")
+		if b.size():
+			add_interact("bed", nav.nearest_free(Vector3(b.x, 0, b.z) + Vector3(1.0, 0, 0)), 1.1, "Go to bed", func(): game.home._bed_menu())
+			interacts.back().at = Vector3(b.x, 0.55, b.z)
+	else:
+		add_interact("snoop", nav.nearest_free(room.mark("kitchen") + Vector3(0.6, 0, 0.1)), 0.8, "Snoop around", func(): game.life.snoop(host))
+		interacts.back().h = 1.2
 	if home():
 		host_node = make_person(id, People.look_of(id), People.npc_name(id))
 		_place_owner()

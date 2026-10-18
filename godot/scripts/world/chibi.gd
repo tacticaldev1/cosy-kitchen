@@ -141,6 +141,12 @@ func _build_person() -> void:
 	if acc == "critic" or acc == "beret":
 		hb.col(Color("3B2340") if acc == "critic" else Color("E8504A"), 1.0, 0.3); hb.at(Vector3(0.01, 0.135, -0.01), Vector3(0.0, 0, 0.18)); hb.ellipsoid(0.15, 0.035, 0.14, 24, 8); hb.pop()
 		hb.at(Vector3(0.03, 0.17, -0.01)); hb.sphere(0.016, 8, 6); hb.pop()
+	if acc == "fox":
+		# a festival fox mask worn on the side of the head
+		hb.col(Color.WHITE, 1.0, 0.4); hb.at(Vector3(0.12, 0.09, 0.05), Vector3(0, 0.9, 0.3)); hb.ellipsoid(0.065, 0.06, 0.03, 14, 8); hb.pop()
+		for s in [-1.0, 1.0]:
+			hb.at(Vector3(0.12 + s * 0.0, 0.13, 0.05 + s * 0.035), Vector3(0, 0.9, 0.3)); hb.cone(0.02, 0.04, 6); hb.pop()
+		hb.col(Color("E8404A"), 0.0); hb.at(Vector3(0.17, 0.09, 0.05)); hb.sphere(0.009, 6, 4); hb.pop()
 	if acc == "bow":
 		hb.col(Color("FF7EA6"), 1.0, 0.4)
 		for s in [-1.0, 1.0]:

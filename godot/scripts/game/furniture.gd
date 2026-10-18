@@ -30,6 +30,7 @@ const CATALOG := {
 	"piano": ["Little piano", 8800, "both", 1.4, 0.6, "Living", "Play a tune."],
 	"fireplace": ["Fireplace", 7400, "both", 1.4, 0.5, "Living", "Crackling and warm."],
 	"toy_box": ["Toy box", 1400, "home", 0.8, 0.5, "Living", "For the little ones."],
+	"goldfish": ["Goldfish bowl", 900, "both", 0.5, 0.5, "Decor", "A goldfish won at the festival, swimming happy circles."],
 }
 
 const WALLS := {"Peach": "FCE9DE", "Sakura": "FFE0EA", "Mint": "DFF5EC", "Sky": "E2EEFF", "Lemon": "FFF6D2", "Lilac": "EDE3FF", "Cocoa": "E8D2C2", "Night": "B8B0D8"}
@@ -181,6 +182,11 @@ static func _build(mb: MB, id: String) -> void:
 			for s in [-1.0, 1.0]:
 				mb.at(Vector3(s * 0.26, 0.95, 0.28)); mb.rbox(Vector3(0.48, 1.55, 0.02), 0.02, 1); mb.pop()
 				mb.col(Color("FFD24A"), 0.6); mb.at(Vector3(s * 0.05, 0.95, 0.3)); mb.sphere(0.025, 8, 6); mb.pop(); mb.col(Color("FFD6C2"), 0.6)
+		"goldfish":
+			mb.col(Color("C8864E"), 1.0, 0.2); mb.at(Vector3(0, 0.3, 0)); mb.cylinder(0.14, 0.6, 16); mb.pop()
+			mb.col(Color("CDEBFA"), 1.0, 0.9); mb.at(Vector3(0, 0.74, 0)); mb.sphere(0.17, 20, 14); mb.pop()
+			mb.col(Color("FF7E3A"), 0.6, 0.6); mb.at(Vector3(0.03, 0.74, 0.05)); mb.ellipsoid(0.05, 0.03, 0.025, 10, 6); mb.pop()
+			mb.at(Vector3(-0.025, 0.74, 0.05)); mb.cone(0.025, 0.04, 6); mb.pop()
 		"rug":
 			mb.col(Color("C3A6FF"), 0.0, 0.0); mb.at(Vector3(0, 0.004, 0)); mb.puck(1.0, 0.012, 0.004, 48); mb.pop()
 			mb.col(Color("E2D6FF"), 0.0, 0.0); mb.at(Vector3(0, 0.009, 0)); mb.puck(0.82, 0.012, 0.004, 48); mb.pop()

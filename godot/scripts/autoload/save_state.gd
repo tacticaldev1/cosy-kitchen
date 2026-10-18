@@ -33,6 +33,7 @@ var furni_inv := {}      # furniture id -> count owned but not placed
 var pantry := {}         # ingredient key -> count bought at the market
 var gifts := {}          # gift id -> count
 var has_ring := false
+var home_kind := "apartment"  # apartment | house
 # --- people
 var rel := {}            # npc id -> {hearts, talked, gifted, dates, partner}
 var partner := ""
@@ -59,7 +60,7 @@ func has_save() -> bool:
 	return started
 
 const FIELDS := ["found", "wallet", "day", "pinned", "friends", "stars_total", "served_total", "best_day", "seen_tutorial", "reputation", "reviews", "cookbooks",
-	"started", "mode", "player_name", "player_look", "energy", "minute", "weather", "location", "layouts", "themes", "furni_inv", "pantry", "gifts", "has_ring",
+	"started", "mode", "player_name", "player_look", "energy", "minute", "weather", "location", "layouts", "themes", "furni_inv", "pantry", "gifts", "has_ring", "home_kind",
 	"rel", "partner", "married", "wedding_day", "family", "chapter", "flags", "cheats_used"]
 
 func load_game() -> void:
@@ -191,7 +192,7 @@ func reset(write := true) -> void:
 	stars_total = 0; served_total = 0; best_day = 0; seen_tutorial = false
 	reputation = 1.0; reviews = []; cookbooks = 0
 	started = false; mode = "story"; player_name = "Chef"; player_look = {}; energy = 100.0; minute = 420.0; weather = "sun"; location = "home"
-	layouts = {}; themes = {}; furni_inv = {}; pantry = {}; gifts = {}; has_ring = false
+	layouts = {}; themes = {}; furni_inv = {}; pantry = {}; gifts = {}; has_ring = false; home_kind = "apartment"
 	rel = {}; partner = ""; married = false; wedding_day = -1; family = {"expecting": -1, "kids": []}
 	chapter = 0; flags = {}; cheats_used = false
 	if write: save()

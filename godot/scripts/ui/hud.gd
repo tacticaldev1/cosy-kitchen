@@ -42,6 +42,7 @@ var _book: BookPanel
 var _cache := {}
 var _fridge_cat := "fruit"
 var life: LifeUI
+var minigames: Minigames
 
 func _ready() -> void:
 	layer = 5
@@ -65,6 +66,10 @@ func _ready() -> void:
 	life.game = game
 	add_child(life)
 	life.build()
+	minigames = Minigames.new()
+	minigames.hud = self
+	minigames.game = game
+	add_child(minigames)
 	Save.changed.connect(_sync_top)
 	game.shop.changed.connect(_sync_orders)
 	_sync_top()

@@ -171,14 +171,15 @@ const DATE_TYPES := {
 	"flowers": {"name": "Flower arranging at the florist", "cost": 1500, "from": 9, "to": 19, "spot": "florist", "line": "You make little bouquets for each other. Yours is mostly daisies and enthusiasm."},
 	"dinner": {"name": "Candlelit dinner at your café", "cost": 2500, "from": 17, "to": 23, "spot": "cafe", "line": "You close the café early, light a candle and cook something special for two."},
 	"movie": {"name": "Movie night at your place", "cost": 800, "from": 18, "to": 26, "spot": "home", "line": "A blanket, a bowl of popcorn, and a romance movie that makes you both cry."},
+	"festival": {"name": "The summer festival together", "cost": 1000, "from": 17, "to": 24, "spot": "festival", "festival": true, "line": "You share takoyaki, win a goldfish, and stand together under the lanterns as the first fireworks bloom over the rooftops."},
 	"stargazing": {"name": "Stargazing by the fountain", "cost": 0, "from": 20, "to": 26, "spot": "fountain", "line": "The town lights go out one by one. You count shooting stars and make secret wishes."},
 }
-const DATE_LIKES := {"hana": ["flowers", "picnic", "dinner"], "ren": ["books", "stargazing", "movie"], "kai": ["market", "dinner", "picnic"], "yuki": ["painting", "stargazing", "icecream"]}
+const DATE_LIKES := {"hana": ["flowers", "picnic", "dinner", "festival"], "ren": ["books", "stargazing", "movie"], "kai": ["market", "dinner", "picnic", "festival"], "yuki": ["painting", "stargazing", "icecream", "festival"]}
 const DATE_DISLIKES := {"hana": ["market"], "ren": ["shopping"], "kai": ["books"], "yuki": ["shopping"]}
 
 ## Things the town does on special days.
 const EVENTS := {
-	"festival": ["Sakura Festival", "Lanterns everywhere! The café gets busier and tips are 50% bigger today."],
+	"festival": ["Summer Festival", "Food stalls, lanterns and fireworks on Main Street from 4pm! The café is busier and tips are 50% bigger."],
 	"sale": ["Market Sale Day", "Kai's market has everything at half price today."],
 	"critics": ["Critics' Week", "Food critics are touring the prefecture. Expect a visit!"],
 	"sweet": ["Sweet Tooth Day", "Everyone's craving desserts and drinks today (bonus tips for them)."],

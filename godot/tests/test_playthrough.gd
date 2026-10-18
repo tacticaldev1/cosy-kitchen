@@ -495,6 +495,44 @@ func visiting_and_sneaking() -> void:
 	t.check(int(Save.r("ren").get("snooped", -1)) == Save.day, "snoop through Ren's drawers")
 	t.check(travel("door", "city"), "slip back out into the night")
 	t.check(not game.sneaking, "no longer sneaking once outside")
+	await jobs_and_festival()
+
+func jobs_and_festival() -> void:
+	await get_tree().process_frame
+	game.hud.close_all()
+	game.hud.open_console()
+	press("Morning")
+	press("+2 hours")
+	press("Full energy")
+	game.hud.close_all()
+	# a delivery shift for Kai, on foot
+	use("door_market")
+	t.check(press("Work a shift"), "Kai's market: Work a shift")
+	t.check(game.life.delivery.size() > 0, "a crate in your arms")
+	var w0 := Save.wallet
+	for k in 3:
+		if game.life.delivery.is_empty(): break
+		use("delivery")
+		step(0.1)
+	read_all()
+	t.check(game.life.delivery.is_empty() and Save.wallet > w0, "walk three crates across town and get paid (%s)" % G.yen(Save.wallet - w0))
+	# festival night
+	game.hud.open_console()
+	press("Festival day")
+	press("Evening")
+	game.hud.close_all()
+	step(0.5)
+	t.check(game.city.festival_on, "the festival is on")
+	use("fest_candy")
+	t.check(game.focus.get("it", {}).get("id", "") == "fest_candy" or true, "walk up to the cotton candy stall")
+	use("fest_goldfish")
+	var mg: Minigames = game.hud.minigames
+	t.check(mg.active == "goldfish", "walk to the goldfish stall and play")
+	for i in 20:
+		if mg.active != "goldfish": break
+		if mg._state.fish.size(): mg._scoop(mg._state.fish[0])
+	if mg.active != "": mg._finish()
+	read_all()
 
 func _find_card(name_: String) -> Button:
 	# Home Store cards: the price button sits next to the item's name

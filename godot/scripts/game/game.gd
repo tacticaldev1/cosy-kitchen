@@ -305,7 +305,7 @@ func focus_candidates() -> Array:
 		var d := Vector2(p.x, p.z).distance_to(Vector2(it.pos.x, it.pos.z))
 		if d < float(it.r):
 			var obj: Vector3 = it.get("at", it.pos)
-			out.append({"kind": "it", "it": it, "label": it.label, "s": score.call(obj, d) + 0.1, "at": obj + Vector3(0, 0.35, 0) if it.has("at") else it.pos + Vector3(0, float(it.get("h", 0.9)) + 0.25, 0)})
+			out.append({"kind": "it", "it": it, "label": it.label, "s": score.call(obj, d) + 0.1 - float(it.get("prio", 0.0)), "at": obj + Vector3(0, 0.35, 0) if it.has("at") else it.pos + Vector3(0, float(it.get("h", 0.9)) + 0.25, 0)})
 	out.sort_custom(func(a, b): return a.s < b.s)
 	return out
 
@@ -1109,6 +1109,31 @@ func _dev_setup(what: String) -> void:
 			enter_house(parts[1], false)
 			instant = false
 			if Shot.arg("talk") != "": life.talk(parts[1])
+		"festival":
+			Save.flags["event"] = "festival"
+			Save.minute = float(Shot.arg("minute", "1245"))
+			travel_now("city", "cafe")
+			player.global_position = Vector3(-2.0, 0, 0.3)
+			sim(3.0)
+			if parts.size() > 1 and parts[1] == "tako":
+				life.festival_job()
+				hud.advance_dialogue(); hud.advance_dialogue()
+				for i in 5: hud.minigames._tako_click(hud.minigames._state.holes[i])
+				for i in 3: hud.minigames._tako_tick(1.4)
+				for i in [5, 6]: hud.minigames._tako_click(hud.minigames._state.holes[i])
+		"delivery":
+			Save.minute = 600.0
+			travel_now("city", "market")
+			life.start_job("delivery")
+			sim(1.0)
+		"jobs":
+			Save.minute = 600.0
+			travel_now("city", parts[1])
+			life.start_job({"bookshop": "books", "florist": "bouquets"}[parts[1]])
+		"myhouse":
+			Save.wallet = 200000
+			life.buy_house()
+			travel_now("home", "start")
 		"partnered":
 			Save.partner = "hana"; Save.married = true
 			Save.minute = 600.0
@@ -1161,6 +1186,8 @@ func _dev_setup(what: String) -> void:
 			var all: Array = []
 			for l in [cafe, city, home]:
 				all.append_array(NavReport.check(l, l.entry_point("door" if l != city else "home"), NavReport.points_for(l), Shot.arg("map") != ""))
+			home.move_to("house")
+			all.append_array(NavReport.check(home, home.entry_point("door"), NavReport.points_for(home), Shot.arg("map") != "").map(func(p): return "house: " + p))
 			for id in People.NPCS:
 				npc_house.set_host(id)
 				all.append_array(NavReport.check(npc_house, npc_house.entry_point("door"), NavReport.points_for(npc_house), Shot.arg("map") != "").map(func(p): return id + "'s " + p))

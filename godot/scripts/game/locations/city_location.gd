@@ -32,8 +32,8 @@ func setup(g: Game) -> void:
 	room.load_glb("res://assets/models/city.glb")
 	cam_offset = Vector3(0, 7.2, 9.6)
 	cam_look = Vector3(0, 0.9, -1.4)
-	cam_bounds = Rect2(-37.0, -1.6, 74.0, 11.6)
-	make_nav(Rect2(-42.0, -4.15, 84.0, 17.6), 0.2)
+	cam_bounds = Rect2(-49.0, -1.6, 98.0, 11.6)
+	make_nav(Rect2(-54.0, -4.15, 108.0, 17.6), 0.2)
 	_build_env()
 	_build_signs()
 	_build_people()
@@ -173,11 +173,26 @@ func _build_people() -> void:
 	walkers.append(cat)
 
 func _random_spot() -> Vector3:
-	var p := Vector3(rng.randf_range(-38, 38), 0, [-3.0, -2.6, 2.7, 3.0][rng.randi() % 4]) if rng.randf() < 0.7 else Vector3(rng.randf_range(-8, 8), 0, rng.randf_range(5, 12))
+	var p := Vector3(rng.randf_range(-48, 48), 0, [-3.0, -2.6, 2.7, 3.0][rng.randi() % 4]) if rng.randf() < 0.7 else Vector3(rng.randf_range(-8, 8), 0, rng.randf_range(5, 12))
 	return nav.nearest_free(p)
 
 func _build_interacts() -> void:
 	var font: Font = load("res://assets/fonts/MochiyPopOne-Regular.ttf")
+	if room.has_mark("door_forsale"):
+		add_interact("door_forsale", room.mark("door_forsale"), 1.0, "The house on the corner", func(): game.life.house_door())
+		interacts.back().h = 2.4
+		var sl := Label3D.new()
+		sl.font = font
+		sl.font_size = 40
+		sl.pixel_size = 0.0028
+		sl.modulate = Color("D9527E")
+		sl.outline_modulate = Color.WHITE
+		sl.outline_size = 8
+		sl.name = "ForSale"
+		add_child(sl)
+		sl.global_position = room.mark("sign_forsale")
+		_forsale_sign = sl
+		update_forsale()
 	for id in People.NPCS:
 		var hid: String = id
 		if not room.has_mark("door_house_" + id): continue
@@ -200,8 +215,10 @@ func _build_interacts() -> void:
 		var label := ""
 		match s:
 			"home":
-				label = "Go home"
-				act = func(): game.travel("home", "door")
+				label = "Sakura Apartments"
+				act = func():
+					if Save.home_kind == "house": game.hud.say([["", "You moved out of your little apartment. Home is the house at the east end of the street now."]])
+					else: game.travel("home", "door")
 			"cafe":
 				label = "Enter the café"
 				act = func(): game.travel("cafe", "door")
@@ -254,6 +271,9 @@ func set_hour(h: float) -> void:
 
 func tick(dt: float) -> void:
 	super(dt)
+	set_festival(festival_now())
+	_fireworks(dt)
+
 	if game.loc == self and game.camera:
 		rain.global_position = game.camera.global_position + Vector3(0, 3, -6)
 	for w in walkers:
@@ -285,6 +305,143 @@ func tick(dt: float) -> void:
 			game.burst(Vector3(rng.randf_range(-1.2, 1.2), 2.0, 10.9 + rng.randf_range(-0.5, 0.5)), [Color("FF7EA6"), Color("FFD24A"), Color.WHITE, Color("C3A6FF"), Color("7FD3B8")], 14, 1.3)
 
 var _blanket: Node3D
+var _forsale_sign: Label3D
+var festival_root: Node3D
+var festival_on := false
+var fireworks_t := 0.0
+var _fw_next := 0.0
+var _delivery_mark: Label3D
+
+## Festival stalls on the closed road: [id, x, sign, roof colour, label, action]
+const STALLS := [["takoyaki", -9.0, "Takoyaki", "FF7EA6"], ["goldfish", -4.5, "Goldfish", "6A8AD8"], ["candy", 4.5, "Cotton candy", "C3A6FF"], ["masks", 9.0, "Masks", "FFB86A"]]
+
+static func festival_now() -> bool:
+	return Save.flags.get("event", "") == "festival" and Save.hour() >= 16.0 and Save.hour() < 23.5
+
+## Lanterns, food stalls and fireworks on Main Street.
+func set_festival(on: bool) -> void:
+	if on == festival_on: return
+	festival_on = on
+	if on and festival_root == null: _build_festival()
+	if festival_root: festival_root.visible = on
+	nav.reset_to_static()
+	if on:
+		for s in STALLS: nav.block_rect(s[1], 1.25, 2.4, 1.0, 0.15)
+	_reach_dirty = true
+	interacts = interacts.filter(func(it): return not String(it.id).begins_with("fest_"))
+	if on:
+		var acts := {"takoyaki": ["Run the takoyaki stall (job)", func(): game.life.festival_job()],
+			"goldfish": ["Goldfish scooping (¥300)", func(): game.life.festival_game()],
+			"candy": ["Cotton candy (¥300, +15 energy)", func(): game.life.festival_snack()],
+			"masks": ["Fox mask (¥800)", func(): game.life.festival_mask()]}
+		for s in STALLS:
+			add_interact("fest_" + s[0], Vector3(s[1], 0, 2.1), 0.9, acts[s[0]][0], acts[s[0]][1])
+			interacts.back().h = 2.4
+			interacts.back().at = Vector3(s[1], 1.2, 1.6)
+
+func _build_festival() -> void:
+	festival_root = Node3D.new()
+	festival_root.name = "Festival"
+	add_child(festival_root)
+	var font: Font = load("res://assets/fonts/MochiyPopOne-Regular.ttf")
+	for s in STALLS:
+		var mb := MB.new()
+		var x: float = s[1]
+		mb.col(Color("C8864E"), 1.0, 0.2)
+		for px in [-1.1, 1.1]:
+			for pz in [-0.45, 0.45]:
+				mb.tube(PackedVector3Array([Vector3(px, 0, pz), Vector3(px, 2.2, pz)]), 0.05, 8)
+		mb.col(Color("FFF4E2"), 1.0, 0.2); mb.at(Vector3(0, 0.85, -0.35)); mb.rbox(Vector3(2.3, 0.12, 0.5), 0.03, 2); mb.pop()
+		mb.col(Color(s[3]).darkened(0.1), 1.0, 0.2); mb.at(Vector3(0, 0.42, -0.35)); mb.rbox(Vector3(2.2, 0.8, 0.45), 0.03, 2); mb.pop()
+		for k in 6:
+			mb.col(Color(s[3]) if k % 2 == 0 else Color.WHITE, 1.0, 0.3)
+			mb.at(Vector3(-1.05 + k * 0.42, 2.35, 0.0), Vector3(0.25, 0, 0)); mb.rbox(Vector3(0.43, 0.07, 1.3), 0.02, 1); mb.pop()
+		for k in 3:
+			mb.col(Color("FF5C5C") if k != 1 else Color("FFE27A"), 1.0, 0.6)
+			mb.at(Vector3(-0.8 + k * 0.8, 1.9, -0.6)); mb.ellipsoid(0.13, 0.17, 0.13, 14, 10); mb.pop()
+		var n := FoodArt.mesh_node(FoodArt.finish(mb))
+		festival_root.add_child(n)
+		n.position = Vector3(x, 0, 1.25)
+		n.rotation.y = PI
+		var l := Label3D.new()
+		l.text = s[2]
+		l.font = font
+		l.font_size = 56
+		l.pixel_size = 0.004
+		l.modulate = Color(s[3]).darkened(0.25)
+		l.outline_modulate = Color.WHITE
+		l.outline_size = 12
+		festival_root.add_child(l)
+		l.position = Vector3(x, 2.62, 1.95)
+		var lamp := OmniLight3D.new()
+		lamp.light_color = Color(1.0, 0.7, 0.45)
+		lamp.light_energy = 1.4
+		lamp.omni_range = 4.0
+		festival_root.add_child(lamp)
+		lamp.position = Vector3(x, 2.0, 0.6)
+	# strings of paper lanterns across the street
+	var lmb := MB.new()
+	for row in [-1.6, 2.2]:
+		for i in 33:
+			var x := -16.0 + i * 1.0
+			var sag := 0.25 * sin(fposmod(x, 4.0) / 4.0 * PI)
+			lmb.col([Color("FF5C5C"), Color("FFF4E2"), Color("FF9EBB")][i % 3], 1.0, 0.7)
+			lmb.at(Vector3(x, 3.5 - sag, row)); lmb.ellipsoid(0.12, 0.16, 0.12, 12, 8); lmb.pop()
+		lmb.col(Color("3B2340"), 0.0)
+		var line := PackedVector3Array()
+		for i in 65:
+			var x := -16.0 + i * 0.5
+			line.append(Vector3(x, 3.66 - 0.25 * sin(fposmod(x, 4.0) / 4.0 * PI), row))
+		lmb.tube(line, 0.01, 4)
+	festival_root.add_child(FoodArt.mesh_node(FoodArt.finish(lmb)))
+	var banner := Label3D.new()
+	banner.text = "Hoshizora Summer Festival"
+	banner.font = font
+	banner.font_size = 80
+	banner.pixel_size = 0.0042
+	banner.modulate = Color("D9527E")
+	banner.outline_modulate = Color.WHITE
+	banner.outline_size = 16
+	festival_root.add_child(banner)
+	banner.position = Vector3(0, 4.1, 2.25)
+
+## Fireworks over the rooftops (festival nights 8:30pm–10pm, or when you watch them on a date).
+func _fireworks(dt: float) -> void:
+	var show := festival_on and Save.hour() >= 20.5 and Save.hour() < 22.0
+	if fireworks_t > 0.0:
+		fireworks_t -= dt
+		show = true
+	if not show: return
+	_fw_next -= dt
+	if _fw_next > 0.0: return
+	_fw_next = rng.randf_range(0.25, 0.7)
+	var cam := game.camera.global_position
+	var at := Vector3(cam.x + rng.randf_range(-9, 9), rng.randf_range(8.5, 12.5), -9.0)
+	var cols: Array = [[Color("FF5C8D"), Color("FFD24A")], [Color("7FD3F8"), Color.WHITE], [Color("C3A6FF"), Color("FF9EBB")], [Color("8ED16B"), Color("FFE27A")]][rng.randi() % 4]
+	game.burst(at, cols, 48, 9.0)
+	Sfx.play("pop", 0.5, 0.5)
+
+## A big marker over the door for a delivery.
+func set_delivery_mark(pos: Variant) -> void:
+	if _delivery_mark == null:
+		_delivery_mark = Label3D.new()
+		_delivery_mark.text = "▼ Deliver here"
+		_delivery_mark.font = load("res://assets/fonts/MochiyPopOne-Regular.ttf")
+		_delivery_mark.font_size = 64
+		_delivery_mark.pixel_size = 0.0042
+		_delivery_mark.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		_delivery_mark.no_depth_test = true
+		_delivery_mark.modulate = Color("FFD24A")
+		_delivery_mark.outline_modulate = Color("3B2340")
+		_delivery_mark.outline_size = 16
+		add_child(_delivery_mark)
+	_delivery_mark.visible = pos != null
+	if pos != null: _delivery_mark.global_position = (pos as Vector3) + Vector3(0, 4.7, 0.3)
+
+func update_forsale() -> void:
+	if _forsale_sign: _forsale_sign.text = ("%s's home" % Save.player_name) if Save.home_kind == "house" else "FOR SALE\n%s" % G.yen(HomeLocation.HOUSE_PRICE)
+	for it in interacts:
+		if it.id == "door_forsale": it.label = "Go home" if Save.home_kind == "house" else "The house for sale"
 var _affair_on := false
 var npc_kid_nodes: Array = []
 
@@ -319,6 +476,12 @@ func stage_couple(id: String, spot: String) -> void:
 		"fountain":
 			c.sit_at(Vector3(0.32, 0, 10.05), 0.0, 0.5)
 			p.sit_at(Vector3(-0.32, 0, 10.05), 0.0, 0.5)
+		"festival":
+			c.global_position = Vector3(0.3, 0, 0.0)
+			c.rotation.y = PI
+			p.global_position = Vector3(-0.3, 0, 0.0)
+			p.rotation.y = PI
+			fireworks_t = 25.0
 		_:
 			var d := room.mark("door_" + spot) if room.has_mark("door_" + spot) else Vector3(0, 0, -3)
 			c.global_position = nav.nearest_free(d + Vector3(0.38, 0, 0.55))

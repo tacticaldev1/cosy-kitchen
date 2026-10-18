@@ -20,16 +20,16 @@ def obstacle(cx, cz, w, d):
     obs_n[0] += 1
 
 # --------------------------------------------------------------------- ground
-box("grass", (0, -0.08, 2), (100, 0.1, 40), "8CCB6E", 0.0, mname="grass_noline", parent=root)
-box("road", (0, -0.02, 0), (92, 0.04, 4.0), "B9B2CC", 0.0, mname="road_noline", parent=root)
-for i in range(46):
-    box("road_line_%d" % i, (-45 + i * 2.0, 0.002, 0), (1.0, 0.01, 0.12), "FFFFFF", 0.0, mname="line_noline", parent=root)
-box("walk_n", (0, -0.01, -3.1), (92, 0.06, 2.2), "EDB9A8", 0.0, mname="walk_noline", parent=root)
-for i in range(92):
-    box("curb_n_%d" % i, (-45.5 + i, 0.03, -2.0), (0.96, 0.08, 0.14), "FFE9DC", 0.004, mname="curb", parent=root)
-box("walk_s", (0, -0.01, 2.7), (92, 0.06, 1.4), "EDB9A8", 0.0, mname="walk_noline", parent=root)
-for i in range(92):
-    box("curb_s_%d" % i, (-45.5 + i, 0.03, 2.0), (0.96, 0.08, 0.14), "FFE9DC", 0.004, mname="curb", parent=root)
+box("grass", (0, -0.08, 2), (124, 0.1, 40), "8CCB6E", 0.0, mname="grass_noline", parent=root)
+box("road", (0, -0.02, 0), (114, 0.04, 4.0), "B9B2CC", 0.0, mname="road_noline", parent=root)
+for i in range(57):
+    box("road_line_%d" % i, (-56 + i * 2.0, 0.002, 0), (1.0, 0.01, 0.12), "FFFFFF", 0.0, mname="line_noline", parent=root)
+box("walk_n", (0, -0.01, -3.1), (114, 0.06, 2.2), "EDB9A8", 0.0, mname="walk_noline", parent=root)
+for i in range(114):
+    box("curb_n_%d" % i, (-56.5 + i, 0.03, -2.0), (0.96, 0.08, 0.14), "FFE9DC", 0.004, mname="curb", parent=root)
+box("walk_s", (0, -0.01, 2.7), (114, 0.06, 1.4), "EDB9A8", 0.0, mname="walk_noline", parent=root)
+for i in range(114):
+    box("curb_s_%d" % i, (-56.5 + i, 0.03, 2.0), (0.96, 0.08, 0.14), "FFE9DC", 0.004, mname="curb", parent=root)
 
 # --------------------------------------------------------------------- shop fronts (north side)
 SHOPS = [
@@ -143,10 +143,10 @@ for sid, x, w, h, wall, roof, awn in SHOPS:
         obstacle(x + 1.8, FZ + 0.7, 0.95, 0.55)
 
 # alleys between shops filled with walls so the row reads as one street
-box("backdrop", (0, 4, -10.5), (96, 8, 0.2), "E6D2EE", 0.0, mname="sky_noline", parent=root)
+box("backdrop", (0, 4, -10.5), (118, 8, 0.2), "E6D2EE", 0.0, mname="sky_noline", parent=root)
 
 # --------------------------------------------------------------------- street lamps and trees
-for i, x in enumerate(range(-38, 40, 6)):
+for i, x in enumerate(range(-50, 52, 6)):
     for side, z in (("n", -2.5), ("s", 2.5)):
         if side == "s" and -11 < x < 11:
             continue
@@ -165,7 +165,7 @@ def tree(name, x, z, pink=False, s=1.0):
     sphere(name + "_ct", (x, 2.7 * s, z), 0.7 * s, cols[0], parent=root)
     obstacle(x, z, 0.45 * s, 0.45 * s)
 
-for x in (-25, -16.5, 15.5, 25, -33, 35.3, -40, 42):
+for x in (-25, -16.5, 15.5, 25, -33, 35.3, -40, 42, -46, 53):
     tree("st_tree_%d" % x, x, 3.4, pink=False, s=0.9)
 
 # --------------------------------------------------------------------- the park
@@ -258,6 +258,50 @@ for hid, x, wall, roof in HOUSES:
     cyl(hid + "_mailpost", (x + 2.25, 0.35, FZ + 0.95), 0.03, 0.7, "FFFFFF", 0.0, 8, parent=g)
     empty("mark_door_house_" + hid, (x, 0, FZ + 0.75), root)
     empty("mark_sign_house_" + hid, (x, 2.45, FZ + 0.1), root)
+
+# --------------------------------------------------------------------- the house for sale (east end)
+g = group("grp_forsale")
+g.parent = root
+HX, HW, HH = 47.5, 7.2, 5.4
+box("fs_body", (HX, HH / 2, FZ - 3.2), (HW, HH, 6.4), "FFF1E0", 0.03, parent=g)
+box("fs_base", (HX, 0.25, FZ - 0.02), (HW + 0.1, 0.5, 0.12), "E8D2C2", 0.02, parent=g)
+bpy.ops.mesh.primitive_cylinder_add(vertices=3, radius=1.0, depth=HW + 0.4, location=g2b(HX, HH + 0.75, FZ - 3.2))
+o = bpy.context.active_object
+o.name = "fs_roof"
+o.rotation_euler = (0, math.pi / 2, 0)
+bpy.ops.object.transform_apply(rotation=True)
+o.scale = (1.0, 3.9, 1.1)
+bpy.ops.object.transform_apply(scale=True)
+finish(o, mat("D9527E"), 0.03, parent=g)
+box("fs_door", (HX, 1.1, FZ + 0.03), (1.1, 2.2, 0.1), "8B5A3C", 0.02, parent=g)
+box("fs_doorframe", (HX, 1.15, FZ + 0.015), (1.3, 2.4, 0.06), "FFFFFF", 0.02, parent=g)
+sphere("fs_knob", (HX + 0.4, 1.05, FZ + 0.1), 0.045, GOLD, parent=g)
+box("fs_porch", (HX, 0.06, FZ + 0.6), (2.6, 0.12, 1.0), "E8B87A", 0.01, parent=g)
+for s in (-1, 1):
+    cyl("fs_pillar_%d" % s, (HX + s * 1.15, 1.35, FZ + 0.95), 0.07, 2.6, "FFFFFF", 0.01, 12, parent=g)
+box("fs_porchroof", (HX, 2.7, FZ + 0.6), (2.8, 0.1, 1.2), "D9527E", 0.02, parent=g)
+for fl in range(2):
+    for s in (-1, 1):
+        for k in range(2 if fl == 0 else 3):
+            wx = HX + s * (1.9 + k * 1.1) if fl == 0 else HX + (k - 1) * 2.2
+            if fl == 1 and s > 0: continue
+            wy = 1.6 + fl * 2.4
+            box("fs_win_%d_%d_%d" % (fl, s, k), (wx, wy, FZ + 0.02), (0.9, 1.1, 0.08), "BFDDF2", 0.02, mname="shopglass", parent=g)
+            box("fs_winf_%d_%d_%d" % (fl, s, k), (wx, wy, FZ + 0.01), (1.04, 1.24, 0.06), "FFFFFF", 0.02, parent=g)
+            box("fs_box_%d_%d_%d" % (fl, s, k), (wx, wy - 0.6, FZ + 0.15), (0.9, 0.14, 0.2), "C8864E", 0.02, parent=g)
+            for f in range(4):
+                sphere("fs_fl_%d_%d_%d_%d" % (fl, s, k, f), (wx - 0.3 + f * 0.2, wy - 0.48, FZ + 0.17), 0.065, ["FF7EA6", "FFD24A", "FFFFFF", "C3A6FF"][f], parent=g)
+# a picket fence with a gap for the path, and the realtor's sign
+for s in (-1, 1):
+    for k in range(7):
+        box("fs_fence_%d_%d" % (s, k), (HX + s * (1.6 + k * 0.32), 0.3, FZ + 1.4), (0.08, 0.6, 0.05), "FFFFFF", 0.01, parent=g)
+    box("fs_rail_%d" % s, (HX + s * 2.56, 0.42, FZ + 1.4), (2.0, 0.06, 0.04), "FFFFFF", 0.01, parent=g)
+    obstacle(HX + s * 2.56, FZ + 1.4, 2.1, 0.12)
+cyl("fs_signpost", (HX + 2.4, 0.6, FZ + 1.75), 0.04, 1.2, "8B5A3C", 0.0, 8, parent=g)
+box("fs_signboard", (HX + 2.4, 1.15, FZ + 1.78), (0.9, 0.55, 0.05), "FFFDF6", 0.02, parent=g)
+obstacle(HX + 2.4, FZ + 1.75, 0.2, 0.2)
+empty("mark_door_forsale", (HX, 0, FZ + 0.85), root)
+empty("mark_sign_forsale", (HX + 2.4, 1.15, FZ + 1.82), root)
 
 # NPC spots (where townsfolk like to hang out)
 for nid, p in {"hana": (13.5, -3.1), "ren": (24.5, -3.1), "kai": (-11.0, -3.1), "yuki": (2.2, 6.8)}.items():

@@ -33,6 +33,7 @@ func tick(dt: float) -> void:
 		_check_t = 1.0
 		check_story()
 		_check_affair()
+	_tick_delivery(dt)
 
 func hour() -> float:
 	return Save.hour()
@@ -81,9 +82,18 @@ func sleep(fainted := false) -> void:
 	game.cutscene = true
 	game.hud.fade(func():
 		new_day(fainted)
-		game.travel_now("home", "bed"), func():
+		go_to_bed_place(), func():
 		game.cutscene = false
 		morning())
+
+## Where you sleep: your own home, or your sweetheart's place if you've moved in together.
+func go_to_bed_place() -> void:
+	var lw: String = Save.flags.get("live_with", "")
+	if lw != "" and not Save.married:
+		game.npc_house.set_host(lw)
+		game.travel_now("npchome", "bed")
+	else:
+		game.travel_now("home", "bed")
 
 func new_day(fainted := false) -> void:
 	Save.day += 1
@@ -209,6 +219,12 @@ func talk(id: String) -> void:
 		opts.append(["Secret date ♥ (¥1,500)", func(): date(id)])
 	if game.loc is NpcHomeLocation and (game.loc as NpcHomeLocation).host == id and Save.minute >= 20 * 60.0 and Save.hearts(id) >= 7.0 and (is_lover(id) or Save.partner == id):
 		opts.append(["Stay the night ♥", func(): stay_night(id)])
+	var lw: String = Save.flags.get("live_with", "")
+	if (is_lover(id) or (Save.partner == id and not Save.married)) and Save.hearts(id) >= 7.0 and lw != id:
+		opts.append(["Ask to move in together ♥", func(): move_in(id)])
+	if lw == id and not Save.married: opts.append(["Move back to your own place", func(): move_out()])
+	if game.loc is NpcHomeLocation and (game.loc as NpcHomeLocation).host == id and Save.minute >= 20 * 60.0 and Save.hearts(id) >= 8.0 and (is_lover(id) or Save.partner == id):
+		opts.append(["Ask for a baby together ♥", func(): ask_baby(id)])
 	if Save.hearts(id) >= 2.0: opts.append(["Gossip about someone…", func(): gossip_menu(id)])
 	if Save.partner == id and not Save.married: opts.append(["Break up", func(): confirm_break_up()])
 	if Save.partner == "" and Save.hearts(id) >= 6.0 and int(d.dates) >= 1:
@@ -264,6 +280,7 @@ func date(id: String) -> void:
 	for t in People.DATE_TYPES:
 		var dt: Dictionary = People.DATE_TYPES[t]
 		if h < float(dt.from) or h > float(dt.to) - 1.5: continue
+		if dt.get("festival", false) and not CityLocation.festival_now() and Save.flags.get("event", "") != "festival": continue
 		if Save.wallet < int(dt.cost): continue
 		var tt: String = t
 		var tag := "  ♥" if knows and People.DATE_LIKES[id].has(t) else ""
@@ -395,9 +412,12 @@ func drama_day() -> Array:
 	for k in People.NPCS:
 		if Save.r(k).get("ex", false) and Save.hearts(k) >= 4.0 and rng.randf() < 0.06:
 			news.append(["", "A letter from %s: \"I still think about us sometimes.\"" % People.npc_name(k)])
-	# special days
+	# special days (and the summer festival every week)
 	var ev := ""
-	if rng.randf() < 0.3:
+	if Save.day % 7 == 0:
+		ev = "festival"
+		news.append(["", "Tonight is the Hoshizora Summer Festival! Food stalls, games and fireworks on Main Street from 4pm."])
+	elif rng.randf() < 0.3:
 		var keys: Array = People.EVENTS.keys()
 		ev = keys[rng.randi() % keys.size()]
 		news.append(["", "Today is %s! %s" % [People.EVENTS[ev][0], People.EVENTS[ev][1]]])
@@ -506,6 +526,7 @@ func wedding() -> void:
 			["Grandpa Jiro", "You may now… go and eat cake! Congratulations!"]], func():
 			Save.married = true
 			Save.wedding_day = Save.day
+			Save.flags.erase("live_with")
 			Save.add_hearts(Save.partner, 1.0)
 			Save.save()
 			game.hud.say([["", "%s moves into your apartment. Your home just got a lot cosier. (Bigger furniture is at the Home Store!)" % partner_name()]])))
@@ -777,6 +798,216 @@ func surprise_baby(o: Dictionary) -> void:
 				game.hud.say([["", "%s comes to live with you. %s looks at the baby… and knows." % [nm, People.npc_name(Save.partner)]]], func(): caught(id, "having a baby with"))
 			else:
 				game.hud.say([["", "%s comes to live with you. You're a parent!" % nm]])))
+
+# ---------------------------------------------------------------- living together, babies
+func move_in(id: String) -> void:
+	var other := Save.partner
+	if other != "" and other != id:
+		game.hud.ask("", "Moving in with %s means leaving %s%s. Are you sure?" % [People.npc_name(id), People.npc_name(other), " (a divorce)" if Save.married else ""], [
+			["Yes. I'm moving in with %s." % People.npc_name(id), func():
+				break_up(true)
+				_do_move_in(id)],
+			["No, never mind", func(): pass]])
+		return
+	_do_move_in(id)
+
+func _do_move_in(id: String) -> void:
+	Save.partner = id
+	Save.flags["live_with"] = id
+	Save.flags.erase("affair")
+	var d := Save.r(id)
+	d.romance = true
+	d.erase("ex")
+	Save.add_hearts(id, 1.0)
+	Sfx.play("yay")
+	game.hearts_fx(id)
+	game.hud.say([[id, {"hana": "Really?! I'll clear a drawer for you. Two drawers!", "ren": "…I already made space on the bookshelf. Just in case.", "kai": "YES! Bring your knives, my kitchen needs a real chef!", "yuki": "My little house just became our little house."}[id]],
+		["", "You move in with %s. You'll sleep at their cottage now (your own place is still yours)." % People.npc_name(id)]])
+	Save.save()
+
+func move_out() -> void:
+	var id: String = Save.flags.get("live_with", "")
+	Save.flags.erase("live_with")
+	Save.add_hearts(id, -1.0)
+	game.hud.say([[id, "Oh… okay. I'll miss you snoring."]])
+	Save.save()
+
+## Asking your sweetheart for a baby. Tasteful: the lights go down and the screen fades to black.
+func ask_baby(id: String) -> void:
+	var pending: Array = Save.family.get("others", [])
+	if pending.any(func(o): return o.with == id):
+		game.hud.say([[id, "Silly, we're already expecting! Just a few more days."]])
+		return
+	if Save.family.kids.size() + pending.size() >= MAX_KIDS:
+		game.hud.say([[id, "Our home is full of little ones already. Let's love the ones we have."]])
+		return
+	if Save.hearts(id) < 8.5 and rng.randf() < 0.35:
+		game.hud.say([[id, "I… I love you. But I'm not ready for that yet. Ask me again someday?"]])
+		return
+	game.hud.say([[id, "A baby… with you? Yes. I'd love that."]], func():
+		game.cutscene = true
+		game.family_scene(func():
+			if game.shop.open: game.shop.close_day(true)
+			new_day()
+			game.cutscene = false
+			pending.append({"with": id, "due": Save.day + 5})
+			Save.family.others = pending
+			Save.add_hearts(id, 1.0)
+			if Save.partner != "" and Save.partner != id: _risk(id, 0.5, "spending the night with")
+			game.player.global_position = game.loc.nav.nearest_free(Vector3(-1.2, 0, 1.2))
+			game.hud.say([["", "The next morning…"], ["", "A few weeks later, %s tells you the news: a baby is on the way! ♥ (due in 5 days)" % People.npc_name(id)]], func(): morning())))
+	Save.save()
+
+# ---------------------------------------------------------------- jobs and the festival
+func job_done_today(job: String) -> bool:
+	return int(Save.flags.get("job_" + job, -1)) == Save.day
+
+func job_open() -> bool:
+	return Save.hour() >= 9.0 and Save.hour() < 18.0
+
+func start_job(job: String) -> void:
+	if job_done_today(job):
+		game.hud.say([["", "You've already worked that shift today. Come back tomorrow!"]])
+		return
+	if not job_open():
+		game.hud.say([["", "Shifts run from 9am to 6pm."]])
+		return
+	if Save.energy < 10.0:
+		game.hud.say([["", "You're too tired to work. Eat something or get some sleep first."]])
+		return
+	game.hud.close_all()
+	match job:
+		"books": game.hud.minigames.books()
+		"bouquets": game.hud.minigames.bouquets()
+		"delivery": start_delivery()
+
+func festival_job() -> void:
+	if int(Save.flags.get("job_takoyaki", -1)) == Save.day:
+		game.hud.say([["", "You've already run the stall tonight. Go enjoy the festival!"]])
+		return
+	game.hud.say([["", "The stall keeper hands you a headband and a pick. \"The takoyaki pan is all yours tonight!\""]], func(): game.hud.minigames.takoyaki())
+
+func festival_game() -> void:
+	if Save.wallet < 300:
+		game.hud.say([["", "You need ¥300 for a paper scoop."]])
+		return
+	Save.wallet -= 300
+	game.hud.minigames.goldfish()
+
+func festival_snack() -> void:
+	if Save.wallet < 300: return
+	Save.wallet -= 300
+	eat(15.0)
+	Sfx.play("nom")
+	game.toast("Fluffy pink cotton candy! +15 energy")
+
+func festival_mask() -> void:
+	if Save.wallet < 800:
+		game.toast("A fox mask costs ¥800")
+		return
+	Save.wallet -= 800
+	Save.player_look.acc = "fox"
+	game.rebuild_player()
+	Sfx.play("yay")
+	game.toast("You wear a fox mask on the side of your head. Very festival.")
+	Save.save()
+
+## Delivery runs for Kai's market: carry a crate to a door across town before time runs out.
+var delivery := {}
+const DELIVERY_SPOTS := ["door_cafe", "door_homestore", "door_boutique", "door_florist", "door_jeweler", "door_bookshop", "house_hana", "house_ren", "house_yuki", "door_home"]
+
+func start_delivery() -> void:
+	var spots: Array = DELIVERY_SPOTS.duplicate()
+	spots.shuffle()
+	delivery = {"queue": spots.slice(0, 3), "t": 0.0, "pay": 0, "done": 0}
+	var crate := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3(0.28, 0.2, 0.22)
+	crate.mesh = bm
+	crate.material_override = Toon.solid(Color("C8864E"), 1.0)
+	game.player.carry(crate)
+	crate.scale = Vector3.ONE
+	_next_delivery()
+
+func _next_delivery() -> void:
+	game.city.interacts = game.city.interacts.filter(func(it): return it.id != "delivery")
+	if delivery.queue.is_empty():
+		_end_delivery()
+		return
+	var target: String = delivery.queue[0]
+	var pos := Vector3.ZERO
+	var nm := ""
+	for it in game.city.interacts:
+		if it.id == target:
+			pos = it.pos
+			nm = String(it.label).replace("Shop at ", "").replace("Enter the café", "the café").replace("Sakura Apartments", "the apartments")
+	delivery.t = 80.0
+	delivery.target = target
+	game.city.add_interact("delivery", pos, 1.0, "Deliver the crate", func(): deliver_crate())
+	game.city.interacts.back().prio = 0.6
+	game.city.interacts.back().h = 2.0
+	game.city.set_delivery_mark(pos)
+	game.toast("Deliver the crate to %s! (%ds)" % [nm, int(delivery.t)])
+
+func deliver_crate() -> void:
+	if delivery.is_empty(): return
+	var bonus := int(maxf(0.0, delivery.t) * 6.0)
+	delivery.pay += 350 + bonus
+	delivery.done += 1
+	delivery.queue.pop_front()
+	Sfx.play("coin")
+	game.toast("Delivered! +%s" % G.yen(350 + bonus))
+	_next_delivery()
+
+func _end_delivery(cancelled := false) -> void:
+	if delivery.is_empty(): return
+	var pay: int = delivery.pay
+	var done: int = delivery.done
+	delivery = {}
+	game.city.interacts = game.city.interacts.filter(func(it): return it.id != "delivery")
+	game.city.set_delivery_mark(null)
+	var c := game.player.drop()
+	if c: c.queue_free()
+	Save.wallet += pay
+	Save.flags["job_delivery"] = Save.day
+	use_energy(8.0)
+	if done > 0: Save.add_hearts("kai", 0.3)
+	Save.save()
+	game.hud.say([["kai", ("Shift's over! %d deliveries, %s earned. You're fast!" % [done, G.yen(pay)]) if not cancelled else "Hey, where'd you go with my crate? I'll pay for what you delivered: %s." % G.yen(pay)]])
+
+func _tick_delivery(dt: float) -> void:
+	if delivery.is_empty(): return
+	if game.loc != game.city:
+		_end_delivery(true)
+		return
+	delivery.t -= dt
+	if delivery.t <= 0.0:
+		game.toast("Too slow! That customer gave up on their crate.")
+		delivery.queue.pop_front()
+		_next_delivery()
+
+# ---------------------------------------------------------------- your own house
+func house_door() -> void:
+	if Save.home_kind == "house":
+		game.travel("home", "door")
+		return
+	var price := HomeLocation.HOUSE_PRICE
+	game.hud.say([["", "A two-room house with a fireplace, a big kitchen and a bedroom of its own. The sign says %s." % G.yen(price)]], func():
+		if Save.wallet < price:
+			game.hud.say([["", "You have %s. Keep saving! (The café is a great place to earn.)" % G.yen(Save.wallet)]])
+			return
+		game.hud.ask("", "Buy the house for %s?" % G.yen(price), [
+			["Buy it and move in!", func(): buy_house()],
+			["Not yet", func(): pass]]))
+
+func buy_house() -> void:
+	Save.wallet -= HomeLocation.HOUSE_PRICE
+	game.home.move_to("house")
+	game.city.update_forsale()
+	flag("house")
+	Sfx.play("yay")
+	game.hud.say([["", "The keys are yours! Your furniture is moved over (anything that didn't fit is in storage)."]], func(): game.travel("home", "door"))
+	Save.save()
 
 # ---------------------------------------------------------------- other people's houses
 func visit_house(id: String) -> void:

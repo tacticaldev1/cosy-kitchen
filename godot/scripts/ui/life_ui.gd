@@ -113,6 +113,7 @@ func update(dt: float) -> void:
 	place_lbl.text = game.loc.title if game.loc else ""
 	var ev: String = Save.flags.get("event", "")
 	time_lbl.text = "Day %d · %s%s%s" % [Save.day, Save.time_text(), "  ·  café open" if game.shop.open else "", ("  ·  " + People.EVENTS[ev][0]) if People.EVENTS.has(ev) else ""]
+	if game.life.delivery.size(): time_lbl.text += "  ·  Delivery %ds" % maxi(0, int(game.life.delivery.t))
 	var night := h >= 19.5 or h < 6.0
 	var ic := "moon" if night else ("rain" if Save.weather == "rain" else "sun")
 	if weather_ic.get_meta("ic", "") != ic:
@@ -389,6 +390,14 @@ func _shop_header(id: String, greet: String, v: VBoxContainer) -> void:
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	l.custom_minimum_size.x = 600
 	h.add_child(l)
+	var job: String = {"market": "delivery", "florist": "bouquets", "bookshop": "books"}.get(id, "")
+	if job != "":
+		var jb := UI.button("Work a shift", "Mint", func(): game.life.start_job(job), 18)
+		jb.tooltip_text = {"delivery": "Deliver crates around town against the clock", "bouquets": "Arrange bouquets for customers", "books": "Shelve books in order"}[job]
+		jb.disabled = game.life.job_done_today(job) or not game.life.job_open()
+		if jb.disabled: jb.text = "Shift done today" if game.life.job_done_today(job) else "Shifts 9am–6pm"
+		jb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		h.add_child(jb)
 	h.add_child(_wallet_lbl())
 	v.add_child(h)
 
@@ -652,9 +661,9 @@ func _look_editor(look: Dictionary, v: VBoxContainer, on_change: Callable, skin 
 	if not look.has("body"): look.body = Chibi.body_of(look)
 	if not look.has("bottom"): look.bottom = "pants"
 	var rows := [["body", "Body", ["f", "m"]], ["style", "Hair", Chibi.STYLES], ["hair", "Hair colour", Chibi.HAIRS], ["shirt", "Top", Chibi.SHIRTS],
-		["bottom", "Bottoms", Chibi.BOTTOMS], ["pants", "Bottoms colour", Chibi.PANTS], ["acc", "Accessory", ["", "bow", "flower", "beret", "glasses"]]]
+		["bottom", "Bottoms", Chibi.BOTTOMS], ["pants", "Bottoms colour", Chibi.PANTS], ["acc", "Accessory", ["", "bow", "flower", "beret", "glasses", "fox"]]]
 	if skin: rows.insert(1, ["skin", "Skin", Chibi.SKINS])
-	var names := {"f": "Feminine", "m": "Masculine", "pants": "Trousers", "shorts": "Shorts", "skirt": "Skirt", "dress": "Dress", "": "None"}
+	var names := {"fox": "Fox mask", "f": "Feminine", "m": "Masculine", "pants": "Trousers", "shorts": "Shorts", "skirt": "Skirt", "dress": "Dress", "": "None"}
 	for r in rows:
 		var field: String = r[0]
 		var h := HFlowContainer.new()
